@@ -17,7 +17,7 @@
         </div>
 
         <?php if (!empty($error)): ?>
-            <div class="mb-6 bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded-r-md text-sm shadow-sm" role="alert">
+            <div class="mb-6 bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded-r-md text-sm shadow-sm" >
                 <p><?php echo htmlspecialchars($error); ?></p>
             </div>
         <?php endif; ?>
@@ -37,26 +37,26 @@
         <form method="POST" action="index.php?action=register" class="space-y-5">
             <div>
                 <label for="username" class="block text-sm font-medium text-slate-700 mb-1">Nombre de Usuario</label>
-                <input type="text" id="username" name="username" required value="<?php echo htmlspecialchars($_POST['username'] ?? ''); ?>"
+                <input type="text" id="username" name="username" value="<?php echo htmlspecialchars($_POST['username'] ?? ''); ?>"
                     class="block w-full px-4 py-2 bg-slate-50 border border-slate-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
             </div>
 
             <div>
                 <label for="email" class="block text-sm font-medium text-slate-700 mb-1">Correo Electrónico</label>
-                <input type="email" id="email" name="email" required value="<?php echo htmlspecialchars($_POST['email'] ?? ''); ?>"
+                <input type="text" id="email" name="email" value="<?php echo htmlspecialchars($_POST['email'] ?? ''); ?>"
                     class="block w-full px-4 py-2 bg-slate-50 border border-slate-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
             </div>
 
             <div>
                 <label for="password" class="block text-sm font-medium text-slate-700 mb-1">Contraseña</label>
-                <input type="password" id="password" name="password" required minlength="8"
+                <input type="password" id="password" name="password" minlength="8"
                     class="block w-full px-4 py-2 bg-slate-50 border border-slate-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
                 <p class="text-xs text-slate-500 mt-1.5 leading-snug">La contraseña debe contener al menos 8 caracteres.</p>
             </div>
 
             <div>
                 <label for="password_confirm" class="block text-sm font-medium text-slate-700 mb-1">Confirmar Contraseña</label>
-                <input type="password" id="password_confirm" name="password_confirm" required minlength="8"
+                <input type="password" id="password_confirm" name="password_confirm" minlength="8"
                     class="block w-full px-4 py-2 bg-slate-50 border border-slate-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
             </div>
 

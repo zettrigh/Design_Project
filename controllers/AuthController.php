@@ -90,9 +90,11 @@ class AuthController {
             $password = $_POST['password'] ?? '';
             $password_confirm = $_POST['password_confirm'] ?? '';
 
-            // 1. Validaciones
-            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                $error = 'El formato del correo no es válido.';
+            // 1. Validaciones para cada campo
+            if (empty($username) || empty($email) || empty($password) || empty($password_confirm)) {
+                $error = 'Todos los campos son obligatorios.';
+            }elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                $error = 'El formato del correo electrónico no es válido.';
             } elseif (strlen($password) < 8) {
                 $error = 'La contraseña debe tener al menos 8 caracteres.';
             } elseif ($password !== $password_confirm) {
