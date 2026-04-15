@@ -1,9 +1,6 @@
 <?php
-// controllers/AuthController.php
-// Capa CONTROLADOR: Procesa las peticiones HTTP, sanitiza los datos, interactúa con el Modelo
-// y determina qué Vista se debe cargar.
 
-require_once __DIR__ . '/../models/UserModel.php';
+require_once './autoload.php';
 
 class AuthController {
     private $userModel;
