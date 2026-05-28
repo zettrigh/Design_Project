@@ -1,45 +1,27 @@
 <?php
-// index.php
-// ENRUTADOR PRINCIPAL (Front Controller)
-// 
-// Todas las peticiones del sistema ingresan por este archivo.
-// Aquí se inicializa la sesión, se levanta la conexión compartida 
-// y se delega la acción al AuthController.
+// index.php — FRONT CONTROLLER
+// ─────────────────────────────────────────────────────────────
+// Punto de entrada único. Utiliza autoloader PSR-4 para la
+// carga automática de clases basada en namespaces.
+//
+// Para añadir un módulo:
+//   1. Crear controlador en App/Controllers/ con namespace App\Controllers
+//   2. Crear modelo en App/Models/ con namespace App\Models (si aplica)
+//   3. Registrar las rutas en routes/web.php
+// ─────────────────────────────────────────────────────────────
 
 session_start();
 
-// Cargar Componentes MVC
-require_once __DIR__ . '/config/database.php';
-require_once __DIR__ . '/controllers/AuthController.php';
+// ── Autoloader PSR-4 ────────────────────────────────────────
+require_once __DIR__ . '/autoload.php';
 
-// Inicialización de la base de datos (inyección de dependencias)
-$db = Database::getInstance()->getConnection();
-$authController = new AuthController($db);
+// ── Bootstrap ───────────────────────────────────────────────
+use Config\Database;
+use Core\Router;
 
-// Simple enrutador por parámetro get 'action'
-// Si usamos friendly URLs vía .htaccess, esto atrapa /login, /dashboard, etc.
-$action = $_GET['action'] ?? 'login';
+$db     = Database::getInstance()->getConnection();
+$router = new Router($db);
 
-// Despachador (Dispatcher)
-switch ($action) {
-    case 'login':
-        $authController->login();
-        break;
-    
-    case 'register':
-        $authController->register();
-        break;
-    
-    case 'dashboard':
-        $authController->dashboard();
-        break;
-    
-    case 'logout':
-        $authController->logout();
-        break;
-    
-    default:
-        // Por defecto volver al login si la acción no existe
-        $authController->login();
-        break;
-}
+require_once __DIR__ . '/routes/web.php';
+
+$router->dispatch();

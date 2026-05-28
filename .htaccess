@@ -1,6 +1,13 @@
 RewriteEngine On
 
-# Si el archivo o directorio solicitado no existe, redirige todo a index.php
+# Base del proyecto (ajustar si cambia la ruta del proyecto)
+RewriteBase /HomeWorks/Design_Project/
+
+# No reescribir si el archivo o directorio existe físicamente
+# (CSS, JS, imágenes, fuentes, etc. se sirven directamente)
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule ^(.*)$ index.php?action=$1 [QSA,L]
+
+# Redirigir TODAS las peticiones restantes al Front Controller
+# La URI original se pasa como parámetro 'url'
+RewriteRule ^(.+)$ index.php?url=$1 [QSA,L]

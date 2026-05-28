@@ -4,10 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Registro | Plataforma</title>
-    <link href="./src/output.css" rel="stylesheet">
+    <link href="/HomeWorks/Design_Project/src/output.css" rel="stylesheet">
 </head>
 <body class="bg-slate-900 text-slate-800 font-sans antialiased min-h-screen flex items-center justify-center selection:bg-blue-200">
-     <img src="./src/img/logo.jpeg" alt="Logo de la Plataforma" class="mx-auto size-90 rounded-full">
+     <img src="/HomeWorks/Design_Project/src/img/logo.jpeg" alt="Logo de la Plataforma" class="mx-auto size-90 rounded-full">
 
     <div class="max-w-md w-full px-10 py-8 bg-white shadow-lg rounded-xl border border-gray-100 mx-16 my-6">
         <div class="mb-8 text-center">
@@ -26,7 +26,7 @@
             <div class="mb-6 bg-emerald-50 border-l-4 border-emerald-500 text-emerald-800 p-4 rounded-r-md text-sm shadow-sm" role="alert">
                 <p class="font-medium"><?php echo htmlspecialchars($success); ?></p>
                 <div class="mt-3">
-                    <a href="index.php?action=login" class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded shadow-sm text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-colors">
+                    <a href="/HomeWorks/Design_Project/login" class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded shadow-sm text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-colors">
                         Ir al login
                     </a>
                 </div>
@@ -34,7 +34,7 @@
         <?php endif; ?>
 
         <?php if (empty($success)): ?>
-        <form method="POST" action="index.php?action=register" class="space-y-5">
+        <form method="POST" action="/HomeWorks/Design_Project/register" class="space-y-5">
             <div>
                 <label for="username" class="block text-sm font-medium text-slate-700 mb-1">Nombre de Usuario</label>
                 <input type="text" id="username" name="username" value="<?php echo htmlspecialchars($_POST['username'] ?? ''); ?>"
@@ -69,7 +69,7 @@
 
         <p class="mt-8 text-center text-sm text-slate-600">
             ¿Ya tienes una cuenta? 
-            <a href="index.php?action=login" class="font-semibold text-blue-600 hover:text-blue-700 transition-colors">Inicia sesión</a>
+            <a href="/HomeWorks/Design_Project/login" class="font-semibold text-blue-600 hover:text-blue-700 transition-colors">Inicia sesión</a>
         </p>
     </div>
 

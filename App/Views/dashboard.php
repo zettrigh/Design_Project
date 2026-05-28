@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard | Plataforma</title>
-    <link href="./src/output.css" rel="stylesheet">
+    <link href="/HomeWorks/Design_Project/src/output.css" rel="stylesheet">
 </head>
 <body class="bg-slate-900 text-slate-800 font-sans antialiased min-h-screen">
 
@@ -12,11 +12,11 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between items-center h-16">
                 <div class="flex items-center">
-                    <img src="./src/img/logo.jpeg" alt="Logo de la Plataforma" class="mx-2 size-10 rounded-full">
+                    <img src="/HomeWorks/Design_Project/src/img/logo.jpeg" alt="Logo de la Plataforma" class="mx-2 size-10 rounded-full">
                     <h1 class="text-xl font-bold text-white tracking-tight">MiMundotrenzas</h1>
                 </div>
                 <div class=" flex items-center space-x-6">
-                    <a href="index.php?action=logout" class="text-sm px-4 py-2 border border-red-600 rounded-lg shadow-sm font-medium text-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors hover:text-black">
+                    <a href="/HomeWorks/Design_Project/logout" class="text-sm px-4 py-2 border border-red-600 rounded-lg shadow-sm font-medium text-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors hover:text-black">
                         Cerrar Sesión
                     </a>
                 </div>

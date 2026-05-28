@@ -1,22 +1,40 @@
 <?php
-/*Uso __DIR__ para evitar errores de ruta y validar existencia de archivos*/
-function autoload($className) {
-    // Definimos las carpetas donde queremos buscar
-    $directories = [
-        __DIR__ . '/models/',
-        __DIR__ . '/config/',
+/**
+ * Autoloader PSR-4
+ *
+ * Mapea prefijos de namespace a directorios del proyecto.
+ * Al registrar una nueva carpeta de clases, solo hay que añadir
+ * una entrada al array $prefixes.
+ *
+ * Mapa actual:
+ *   App\       → App/
+ *   Config\    → Config/
+ *   Core\      → Core/
+ */
+
+spl_autoload_register(function (string $class): void {
+    // Mapa: prefijo de namespace → directorio base
+    $prefixes = [
+        'App\\'    => __DIR__ . '/App/',
+        'Config\\' => __DIR__ . '/Config/',
+        'Core\\'   => __DIR__ . '/Core/',
     ];
 
-    foreach ($directories as $directory) {
-        $file = $directory . $className . '.php';
-        
-        // Verificamos si el archivo existe antes de intentar cargarlo
+    foreach ($prefixes as $prefix => $baseDir) {
+        $len = strlen($prefix);
+
+        // ¿El FQCN comienza con este prefijo?
+        if (strncmp($prefix, $class, $len) !== 0) {
+            continue;
+        }
+
+        // Convertir el resto del namespace en ruta de archivo
+        $relativeClass = substr($class, $len);
+        $file = $baseDir . str_replace('\\', '/', $relativeClass) . '.php';
+
         if (file_exists($file)) {
-            require_once $file;
-            return; // Salimos de la función si ya lo encontramos
+            require $file;
+            return;
         }
     }
-}
-
-spl_autoload_register('autoload');
-?>
+});
