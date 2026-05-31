@@ -57,7 +57,7 @@ class UserModel {
     public function getUserByEmail(string $email): array|false {
         try {
             $stmt = $this->db->prepare(
-                "SELECT id, username, password FROM users WHERE email = :email LIMIT 1"
+                "SELECT id, username, password, role FROM users WHERE email = :email LIMIT 1"
             );
             $stmt->bindParam(':email', $email, \PDO::PARAM_STR);
             $stmt->execute();

@@ -1,4 +1,5 @@
 <?php
+define('ACCESS_ALLOWED', true);
 // index.php — FRONT CONTROLLER
 // ─────────────────────────────────────────────────────────────
 // Punto de entrada único. Utiliza autoloader PSR-4 para la

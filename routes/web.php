@@ -22,24 +22,19 @@ $router->post('login',    'App\Controllers\AuthController', 'login');
 $router->get('register',  'App\Controllers\AuthController', 'register');
 $router->post('register', 'App\Controllers\AuthController', 'register');
 
-$router->get('dashboard', 'App\Controllers\AuthController', 'dashboard');
-$router->get('logout',    'App\Controllers\AuthController', 'logout');
+$router->get('dashboard', 'App\Controllers\DashboardController', 'index');
+$router->get('logout',    'App\Controllers\DashboardController', 'logout');
 
 // =============================================
-//  Módulo: Libros (BookController) — EJEMPLO
+//  Módulo: Catálogo y Reservas (Usuario)
 // =============================================
-// 1. Crear App/Controllers/BookController.php con namespace App\Controllers
-// 2. Descomentar las rutas:
-//
-// $router->get('books',         'App\Controllers\BookController', 'index');
-// $router->get('books/create',  'App\Controllers\BookController', 'create');
-// $router->post('books/store',  'App\Controllers\BookController', 'store');
-// $router->get('books/show',    'App\Controllers\BookController', 'show');
-// $router->post('books/delete', 'App\Controllers\BookController', 'delete');
+$router->post('user/reserve', 'App\Controllers\DashboardController', 'reserveHairstyle');
 
 // =============================================
-//  Módulo: Préstamos (LoanController) — EJEMPLO
+//  Módulo: Gestión Administrativa (CRUD & Reservas)
 // =============================================
-// $router->get('loans',         'App\Controllers\LoanController', 'index');
-// $router->post('loans/create', 'App\Controllers\LoanController', 'create');
-// $router->post('loans/return', 'App\Controllers\LoanController', 'returnBook');
+$router->post('admin/hairstyles/store',  'App\Controllers\DashboardController', 'adminStoreHairstyle');
+$router->post('admin/hairstyles/update', 'App\Controllers\DashboardController', 'adminUpdateHairstyle');
+$router->post('admin/hairstyles/delete', 'App\Controllers\DashboardController', 'adminDeleteHairstyle');
+$router->post('admin/reservations/update', 'App\Controllers\DashboardController', 'adminUpdateReservation');
+
