@@ -3,6 +3,9 @@ RewriteEngine On
 # Base del proyecto (ajustar si cambia la ruta del proyecto)
 RewriteBase /HomeWorks/Design_Project/
 
+# Bloquear acceso directo a archivos dentro de App/
+RewriteRule ^App/ - [F,L]
+
 # No reescribir si el archivo o directorio existe físicamente
 # (CSS, JS, imágenes, fuentes, etc. se sirven directamente)
 RewriteCond %{REQUEST_FILENAME} !-f
