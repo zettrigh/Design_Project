@@ -2,128 +2,111 @@
 
 namespace App\Controllers;
 
-use App\Models\UserModel;
+use App\Services\AuthService;
 
-// ─────────────────────────────────────────────────────────────
-// App\Controllers\AuthController
-// Maneja login, registro, dashboard y logout.
-// ─────────────────────────────────────────────────────────────
+/**
+ * App\Controllers\AuthController
+ *
+ * Controlador "thin" dedicado exclusivamente a las rutas de autenticación:
+ * login y registro. Toda la lógica de negocio está delegada a AuthService.
+ *
+ * Principios aplicados:
+ *   - SRP: Solo maneja petición HTTP de autenticación.
+ *   - DIP: Depende de AuthService (inyectado vía constructor).
+ *   - Thin Controller: Solo valida inputs básicos y delega al servicio.
+ *
+ * @package App\Controllers
+ */
+class AuthController
+{
+    /**
+     * @var AuthService Servicio de autenticación.
+     */
+    private AuthService $authService;
 
-class AuthController {
-
-    private UserModel $userModel;
-
-    public function __construct(\PDO $dbConnection) {
-        $this->userModel = new UserModel($dbConnection);
+    /**
+     * Constructor con inyección de dependencias.
+     *
+     * @param \PDO $dbConnection Conexión PDO (necesaria para AuthService).
+     */
+    public function __construct(\PDO $dbConnection)
+    {
+        $userModel = new \App\Models\UserModel($dbConnection);
+        $this->authService = new AuthService($userModel);
     }
 
-    // ── Helpers ──────────────────────────────────────────────
-
-    // Sanitiza inputs HTTP para prevenir XSS
-    private function sanitize(string $data): string {
-        return htmlspecialchars(stripslashes(trim($data)), ENT_QUOTES, 'UTF-8');
-    }
-
-
-
-    // Renderiza una vista pasando variables al scope
-    private function render(string $view, array $data = []): void {
-        extract($data);
-        require_once __DIR__ . '/../Views/' . $view . '.php';
-    }
-
-    // ── Acciones ─────────────────────────────────────────────
-
-    // GET / POST: Login
-    public function login(): void {
+    /**
+     * Muestra el formulario de login o procesa las credenciales (GET/POST).
+     *
+     * @return void
+     */
+    public function login(): void
+    {
+        // Si ya tiene sesión, redirigir al dashboard
         if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
-            header('Location: /HomeWorks/Design_Project/dashboard');
+            $baseUrl = \Config\Environment::get('BASE_URL', '/HomeWorks/Design_Project');
+            header('Location: ' . $baseUrl . '/dashboard');
             exit;
         }
 
+        // Procesar formulario (POST)
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             header('Content-Type: application/json');
 
-            $email    = $this->sanitize($_POST['email']    ?? '');
-            $password =                $_POST['password']  ?? '';
+            $email    = $_POST['email']    ?? '';
+            $password = $_POST['password'] ?? '';
 
-            if (empty($email) || empty($password)) {
-                echo json_encode(['success' => false, 'message' => 'Todos los campos son obligatorios.']);
-                exit;
-            }
-
-            $user = $this->userModel->getUserByEmail($email);
-
-            if ($user && password_verify($password, $user['password'])) {
-                session_regenerate_id(true); // Prevención de Session Fixation
-                $_SESSION['user_id']       = $user['id'];
-                $_SESSION['username']      = $user['username'];
-                $_SESSION['role']          = $user['role']; // Guardamos el rol en sesión
-                $_SESSION['logged_in']     = true;
-                $_SESSION['last_activity'] = time();
-
-                echo json_encode(['success' => true, 'redirect' => '/HomeWorks/Design_Project/dashboard']);
-                exit;
-            }
-
-            echo json_encode(['success' => false, 'message' => 'Credenciales incorrectas o no válidas.']);
+            $result = $this->authService->login($email, $password);
+            echo json_encode($result);
             exit;
         }
 
+        // Mostrar formulario (GET)
         $this->render('login');
     }
 
-    // GET / POST: Registro
-    public function register(): void {
+    /**
+     * Muestra el formulario de registro o procesa los datos (GET/POST).
+     *
+     * @return void
+     */
+    public function register(): void
+    {
+        // Si ya tiene sesión, redirigir al dashboard
         if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
-            header('Location: /HomeWorks/Design_Project/dashboard');
+            $baseUrl = \Config\Environment::get('BASE_URL', '/HomeWorks/Design_Project');
+            header('Location: ' . $baseUrl . '/dashboard');
             exit;
         }
 
+        // Procesar formulario (POST)
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             header('Content-Type: application/json');
 
-            $username         = $this->sanitize($_POST['username']         ?? '');
-            $email            = $this->sanitize($_POST['email']            ?? '');
-            $password         =                $_POST['password']          ?? '';
-            $password_confirm =                $_POST['password_confirm']  ?? '';
+            $username         = $_POST['username']         ?? '';
+            $email            = $_POST['email']            ?? '';
+            $password         = $_POST['password']         ?? '';
+            $passwordConfirm  = $_POST['password_confirm'] ?? '';
 
-            if (empty($username) || empty($email) || empty($password) || empty($password_confirm)) {
-                echo json_encode(['success' => false, 'message' => 'Todos los campos son obligatorios.']);
-                exit;
-            } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                echo json_encode(['success' => false, 'message' => 'El formato del correo electrónico no es válido.']);
-                exit;
-            } elseif (strlen($password) < 8) {
-                echo json_encode(['success' => false, 'message' => 'La contraseña debe tener al menos 8 caracteres.']);
-                exit;
-            } elseif ($password !== $password_confirm) {
-                echo json_encode(['success' => false, 'message' => 'Las contraseñas no coinciden.']);
-                exit;
-            } elseif ($this->userModel->isEmailTaken($email)) {
-                echo json_encode(['success' => false, 'message' => 'Este correo electrónico ya está registrado.']);
-                exit;
-            } elseif ($this->userModel->isUsernameTaken($username)) {
-                echo json_encode(['success' => false, 'message' => 'El nombre de usuario no está disponible.']);
-                exit;
-            } else {
-                $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
-
-                if ($this->userModel->createUser($username, $email, $hashedPassword)) {
-                    echo json_encode([
-                        'success' => true, 
-                        'message' => 'Registro completado con éxito. Ya puedes iniciar sesión.',
-                        'redirect' => '/HomeWorks/Design_Project/login'
-                    ]);
-                    exit;
-                } else {
-                    echo json_encode(['success' => false, 'message' => 'Ocurrió un error en el servidor. Intenta de nuevo.']);
-                    exit;
-                }
-            }
+            $result = $this->authService->register($username, $email, $password, $passwordConfirm);
+            echo json_encode($result);
+            exit;
         }
 
+        // Mostrar formulario (GET)
         $this->render('register');
     }
 
+    /**
+     * Renderiza una vista PHP pasándole variables al scope.
+     *
+     * @param string $view Nombre de la vista (sin extensión).
+     * @param array  $data Variables disponibles en la vista.
+     * @return void
+     */
+    private function render(string $view, array $data = []): void
+    {
+        extract($data);
+        require_once __DIR__ . '/../Views/' . $view . '.php';
+    }
 }

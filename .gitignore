@@ -1,0 +1,16 @@
+# ── Environment Variables ──
+.env
+
+# ── Dependencies ──
+node_modules/
+
+# ── OS Files ──
+Thumbs.db
+.DS_Store
+
+# ── IDE ──
+.vscode/
+.idea/
+
+# ── Logs ──
+*.log

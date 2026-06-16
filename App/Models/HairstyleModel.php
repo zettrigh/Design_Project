@@ -2,26 +2,45 @@
 
 namespace App\Models;
 
-// ─────────────────────────────────────────────────────────────
-// App\Models\HairstyleModel
-// Capa de acceso a datos para la entidad Hairstyle (Peinados).
-// ─────────────────────────────────────────────────────────────
-
-class HairstyleModel {
-
+/**
+ * App\Models\HairstyleModel
+ *
+ * Capa de acceso a datos para la entidad Hairstyle (Peinados).
+ * Maneja todas las operaciones CRUD sobre la tabla `hairstyles`.
+ *
+ * @package App\Models
+ */
+class HairstyleModel
+{
+    /**
+     * Conexión PDO activa.
+     *
+     * @var \PDO
+     */
     private \PDO $db;
 
-    public function __construct(\PDO $dbConnection) {
+    /**
+     * Constructor con inyección de dependencias.
+     *
+     * @param \PDO $dbConnection Conexión PDO activa.
+     */
+    public function __construct(\PDO $dbConnection)
+    {
         $this->db = $dbConnection;
     }
 
-    // Obtiene todos los peinados activos en venta
-    public function getAllActiveHairstyles(): array {
+    /**
+     * Obtiene todos los peinados activos (para clientes).
+     *
+     * @return array<int, array{id: int, name: string, description: string, price: float, image_url: string, status: string, created_at: string}>
+     */
+    public function getAllActiveHairstyles(): array
+    {
         try {
             $stmt = $this->db->prepare(
-                "SELECT id, name, description, price, image_url, status, created_at 
-                 FROM hairstyles 
-                 WHERE status = 'active' 
+                "SELECT id, name, description, price, image_url, status, created_at
+                 FROM hairstyles
+                 WHERE status = 'active'
                  ORDER BY id DESC"
             );
             $stmt->execute();
@@ -32,12 +51,17 @@ class HairstyleModel {
         }
     }
 
-    // Obtiene todos los peinados para la vista de administrador
-    public function getAllHairstyles(): array {
+    /**
+     * Obtiene todos los peinados (para admin/trabajador).
+     *
+     * @return array<int, array{id: int, name: string, description: string, price: float, image_url: string, status: string, created_at: string}>
+     */
+    public function getAllHairstyles(): array
+    {
         try {
             $stmt = $this->db->prepare(
-                "SELECT id, name, description, price, image_url, status, created_at 
-                 FROM hairstyles 
+                "SELECT id, name, description, price, image_url, status, created_at
+                 FROM hairstyles
                  ORDER BY id DESC"
             );
             $stmt->execute();
@@ -48,12 +72,18 @@ class HairstyleModel {
         }
     }
 
-    // Obtiene un peinado por ID
-    public function getHairstyleById(int $id): array|false {
+    /**
+     * Obtiene un peinado por su ID.
+     *
+     * @param int $id ID del peinado.
+     * @return array|false Datos del peinado o false si no existe.
+     */
+    public function getHairstyleById(int $id): array|false
+    {
         try {
             $stmt = $this->db->prepare(
-                "SELECT id, name, description, price, image_url, status, created_at 
-                 FROM hairstyles 
+                "SELECT id, name, description, price, image_url, status, created_at
+                 FROM hairstyles
                  WHERE id = :id LIMIT 1"
             );
             $stmt->bindParam(':id', $id, \PDO::PARAM_INT);
@@ -65,8 +95,23 @@ class HairstyleModel {
         }
     }
 
-    // Crea un nuevo peinado
-    public function createHairstyle(string $name, string $description, float $price, string $imageUrl, string $status = 'active'): bool {
+    /**
+     * Crea un nuevo peinado en el catálogo.
+     *
+     * @param string $name        Nombre del peinado.
+     * @param string $description Descripción detallada.
+     * @param float  $price       Precio en la moneda base.
+     * @param string $imageUrl    URL de la imagen.
+     * @param string $status      Estado ('active' o 'inactive').
+     * @return bool True si la inserción fue exitosa.
+     */
+    public function createHairstyle(
+        string $name,
+        string $description,
+        float $price,
+        string $imageUrl,
+        string $status = 'active'
+    ): bool {
         try {
             $stmt = $this->db->prepare(
                 "INSERT INTO hairstyles (name, description, price, image_url, status)
@@ -84,12 +129,29 @@ class HairstyleModel {
         }
     }
 
-    // Actualiza los detalles de un peinado
-    public function updateHairstyle(int $id, string $name, string $description, float $price, string $imageUrl, string $status): bool {
+    /**
+     * Actualiza los detalles de un peinado existente.
+     *
+     * @param int    $id          ID del peinado.
+     * @param string $name        Nuevo nombre.
+     * @param string $description Nueva descripción.
+     * @param float  $price       Nuevo precio.
+     * @param string $imageUrl    Nueva URL de imagen.
+     * @param string $status      Nuevo estado.
+     * @return bool True si la actualización fue exitosa.
+     */
+    public function updateHairstyle(
+        int $id,
+        string $name,
+        string $description,
+        float $price,
+        string $imageUrl,
+        string $status
+    ): bool {
         try {
             $stmt = $this->db->prepare(
-                "UPDATE hairstyles 
-                 SET name = :name, description = :description, price = :price, image_url = :image_url, status = :status 
+                "UPDATE hairstyles
+                 SET name = :name, description = :description, price = :price, image_url = :image_url, status = :status
                  WHERE id = :id"
             );
             $stmt->bindParam(':id',          $id,          \PDO::PARAM_INT);
@@ -105,12 +167,16 @@ class HairstyleModel {
         }
     }
 
-    // Elimina un peinado
-    public function deleteHairstyle(int $id): bool {
+    /**
+     * Elimina un peinado del catálogo.
+     *
+     * @param int $id ID del peinado a eliminar.
+     * @return bool True si la eliminación fue exitosa.
+     */
+    public function deleteHairstyle(int $id): bool
+    {
         try {
-            $stmt = $this->db->prepare(
-                "DELETE FROM hairstyles WHERE id = :id"
-            );
+            $stmt = $this->db->prepare("DELETE FROM hairstyles WHERE id = :id");
             $stmt->bindParam(':id', $id, \PDO::PARAM_INT);
             return $stmt->execute();
         } catch (\PDOException $e) {

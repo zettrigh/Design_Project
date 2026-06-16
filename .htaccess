@@ -6,6 +6,9 @@ RewriteBase /HomeWorks/Design_Project/
 # Bloquear acceso directo a archivos dentro de App/
 RewriteRule ^App/ - [F,L]
 
+# Bloquear acceso directo a archivos .env
+RewriteRule ^\.env$ - [F,L]
+
 # No reescribir si el archivo o directorio existe físicamente
 # (CSS, JS, imágenes, fuentes, etc. se sirven directamente)
 RewriteCond %{REQUEST_FILENAME} !-f

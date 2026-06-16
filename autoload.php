@@ -7,9 +7,10 @@
  * una entrada al array $prefixes.
  *
  * Mapa actual:
- *   App\       → App/
- *   Config\    → Config/
- *   Core\      → Core/
+ *   App\          → App/
+ *   Config\       → Config/
+ *   Core\         → Core/
+ *   App\Services\ → App/Services/
  */
 
 spl_autoload_register(function (string $class): void {
