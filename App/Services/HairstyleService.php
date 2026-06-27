@@ -3,180 +3,94 @@
 namespace App\Services;
 
 use App\Models\HairstyleModel;
+use Core\Result;
 
-/**
- * App\Services\HairstyleService
- *
- * Capa de servicio para la gestión del catálogo de peinados.
- * Centraliza la lógica de negocio, validación y reglas de acceso.
- *
- * Principios aplicados:
- *   - SRP: Solo maneja lógica de catálogo de peinados.
- *   - DIP: Depende de HairstyleModel (abstracción).
- *   - DRY: Centraliza validaciones reutilizables.
- *
- * @package App\Services
- */
 class HairstyleService
 {
-    /**
-     * @var HairstyleModel Modelo de acceso a datos de peinados.
-     */
     private HairstyleModel $hairstyleModel;
 
-    /**
-     * Constructor con inyección de dependencias.
-     *
-     * @param HairstyleModel $hairstyleModel Instancia del modelo de peinados.
-     */
     public function __construct(HairstyleModel $hairstyleModel)
     {
         $this->hairstyleModel = $hairstyleModel;
     }
 
-    /**
-     * Obtiene todos los peinados activos (para clientes).
-     *
-     * @return array<int, array{id: int, name: string, description: string, price: float, image_url: string, status: string, created_at: string}>
-     */
-    public function getActiveHairstyles(): array
-    {
-        return $this->hairstyleModel->getAllActiveHairstyles();
-    }
-
-    /**
-     * Obtiene todos los peinados (para admin/trabajador).
-     *
-     * @return array<int, array{id: int, name: string, description: string, price: float, image_url: string, status: string, created_at: string}>
-     */
     public function getAllHairstyles(): array
     {
         return $this->hairstyleModel->getAllHairstyles();
     }
 
-    /**
-     * Obtiene un peinado por su ID.
-     *
-     * @param int $id ID del peinado.
-     * @return array|false Datos del peinado o false si no existe.
-     */
+    public function getActiveHairstyles(): array
+    {
+        return $this->hairstyleModel->getAllActiveHairstyles();
+    }
+
     public function getHairstyleById(int $id): array|false
     {
         return $this->hairstyleModel->getHairstyleById($id);
     }
 
-    /**
-     * Crea un nuevo peinado en el catálogo.
-     *
-     * @param string $name        Nombre del peinado.
-     * @param string $description Descripción detallada.
-     * @param float  $price       Precio en la moneda base.
-     * @param string $imageUrl    URL de la imagen del peinado.
-     * @param string $status      Estado ('active' o 'inactive').
-     * @return array{success: bool, message: string}
-     */
-    public function createHairstyle(
-        string $name,
-        string $description,
-        float $price,
-        string $imageUrl,
-        string $status = 'active'
-    ): array {
-        $name        = $this->sanitize($name);
-        $description = $this->sanitize($description);
-        $imageUrl    = $this->sanitize($imageUrl);
-
-        // URL de imagen por defecto si no se proporciona
-        $baseUrl = \Config\Environment::get('BASE_URL', '/HomeWorks/Design_Project');
-        if (empty($imageUrl)) {
-            $imageUrl = $baseUrl . '/src/img/braid_box.png';
-        }
-
-        if (empty($name) || empty($description) || $price <= 0) {
-            return ['success' => false, 'message' => 'El nombre, la descripción y un precio válido son obligatorios.'];
-        }
-
-        if (!in_array($status, ['active', 'inactive'])) {
-            $status = 'active';
-        }
-
-        if ($this->hairstyleModel->createHairstyle($name, $description, $price, $imageUrl, $status)) {
-            return ['success' => true, 'message' => 'Peinado agregado con éxito al catálogo.'];
-        }
-
-        return ['success' => false, 'message' => 'Error al guardar el peinado en la base de datos.'];
+    public function getPriceUSD(int $id): ?float
+    {
+        $hairstyle = $this->hairstyleModel->getHairstyleById($id);
+        return $hairstyle ? (float) $hairstyle['price'] : null;
     }
 
-    /**
-     * Actualiza los datos de un peinado existente.
-     *
-     * @param int    $id          ID del peinado.
-     * @param string $name        Nuevo nombre.
-     * @param string $description Nueva descripción.
-     * @param float  $price       Nuevo precio.
-     * @param string $imageUrl    Nueva URL de imagen.
-     * @param string $status      Nuevo estado.
-     * @return array{success: bool, message: string}
-     */
-    public function updateHairstyle(
-        int $id,
-        string $name,
-        string $description,
-        float $price,
-        string $imageUrl,
-        string $status
-    ): array {
-        $name        = $this->sanitize($name);
-        $description = $this->sanitize($description);
-        $imageUrl    = $this->sanitize($imageUrl);
-
-        $baseUrl = \Config\Environment::get('BASE_URL', '/HomeWorks/Design_Project');
-        if (empty($imageUrl)) {
-            $imageUrl = $baseUrl . '/src/img/braid_box.png';
+    public function createHairstyle(string $name, string $description, float $price, string $imageUrl, string $status = 'active', int $durationMinutes = 60): Result
+    {
+        if (empty(trim($name))) {
+            return Result::failure('El nombre del peinado es obligatorio.');
+        }
+        if ($price <= 0) {
+            return Result::failure('El precio debe ser mayor a cero.');
+        }
+        if (empty(trim($imageUrl))) {
+            return Result::failure('La URL de la imagen es obligatoria.');
         }
 
-        if ($id <= 0 || empty($name) || empty($description) || $price <= 0) {
-            return ['success' => false, 'message' => 'Faltan campos obligatorios para actualizar el peinado.'];
-        }
+        $durationMinutes = max(15, min(480, $durationMinutes));
 
-        if (!in_array($status, ['active', 'inactive'])) {
-            $status = 'active';
-        }
+        $created = $this->hairstyleModel->createHairstyle(
+            trim($name), trim($description), $price, trim($imageUrl), $status, $durationMinutes
+        );
 
-        if ($this->hairstyleModel->updateHairstyle($id, $name, $description, $price, $imageUrl, $status)) {
-            return ['success' => true, 'message' => 'Peinado actualizado correctamente.'];
-        }
-
-        return ['success' => false, 'message' => 'No se realizaron cambios o el peinado no existe.'];
+        return $created
+            ? Result::success(null, 'Peinado creado exitosamente.')
+            : Result::failure('Error al crear el peinado.');
     }
 
-    /**
-     * Elimina un peinado del catálogo.
-     *
-     * @param int $id ID del peinado a eliminar.
-     * @return array{success: bool, message: string}
-     */
-    public function deleteHairstyle(int $id): array
+    public function updateHairstyle(int $id, string $name, string $description, float $price, string $imageUrl, string $status, int $durationMinutes = 60): Result
     {
         if ($id <= 0) {
-            return ['success' => false, 'message' => 'ID de peinado inválido.'];
+            return Result::failure('ID de peinado inválido.');
+        }
+        if (empty(trim($name))) {
+            return Result::failure('El nombre del peinado es obligatorio.');
+        }
+        if ($price <= 0) {
+            return Result::failure('El precio debe ser mayor a cero.');
         }
 
-        if ($this->hairstyleModel->deleteHairstyle($id)) {
-            return ['success' => true, 'message' => 'Peinado eliminado del sistema de manera exitosa.'];
-        }
+        $durationMinutes = max(15, min(480, $durationMinutes));
 
-        return ['success' => false, 'message' => 'No se pudo eliminar el peinado. Podría estar vinculado a una reserva activa.'];
+        $updated = $this->hairstyleModel->updateHairstyle(
+            $id, trim($name), trim($description), $price, trim($imageUrl), $status, $durationMinutes
+        );
+
+        return $updated
+            ? Result::success(null, 'Peinado actualizado exitosamente.')
+            : Result::failure('Error al actualizar el peinado.');
     }
 
-    /**
-     * Sanitiza un string de entrada HTTP.
-     *
-     * @param string $data Datos crudos.
-     * @return string Datos sanitizados.
-     */
-    private function sanitize(string $data): string
+    public function deleteHairstyle(int $id): Result
     {
-        return htmlspecialchars(stripslashes(trim($data)), ENT_QUOTES, 'UTF-8');
+        if ($id <= 0) {
+            return Result::failure('ID de peinado inválido.');
+        }
+
+        $deleted = $this->hairstyleModel->deleteHairstyle($id);
+
+        return $deleted
+            ? Result::success(null, 'Peinado eliminado exitosamente.')
+            : Result::failure('Error al eliminar el peinado.');
     }
 }

@@ -3,6 +3,13 @@ if (!defined('ACCESS_ALLOWED')) {
     header('HTTP/1.1 403 Forbidden');
     exit('Direct access not allowed.');
 }
+
+/** @var string $username */
+/** @var array $stats */
+/** @var array $hairstyles */
+/** @var array $reservations */
+/** @var string $baseUrl */
+
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -19,7 +26,7 @@ $baseUrl = $baseUrl ?? '/HomeWorks/Design_Project';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Panel de Administración | MiMundoTrenzas</title>
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link rel="stylesheet" href="<?php echo $baseUrl; ?>/src/output.css">
     <style>
         body {
             font-family: 'Plus Jakarta Sans', sans-serif
@@ -82,6 +89,66 @@ $baseUrl = $baseUrl ?? '/HomeWorks/Design_Project';
             <div class="bg-white p-6 rounded-2xl border border-[#EFE5D9] shadow-sm flex flex-col justify-between">
                 <span class="text-xs uppercase font-bold tracking-wider text-[#5C4333]/50">Ingresos Est.</span>
                 <span class="text-3xl font-extrabold text-[#B56B45] mt-2">$<?php echo number_format($stats['estimated_revenue'], 2); ?></span>
+            </div>
+        </section>
+
+        <!-- Tipo de Cambio USD → VES -->
+        <section class="bg-white rounded-3xl border border-[#EFE5D9] p-6 sm:p-8 shadow-md space-y-6">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-[#EFE5D9] pb-4">
+                <div>
+                    <h3 class="text-2xl font-extrabold tracking-tight">Tipo de Cambio</h3>
+                    <p class="text-sm text-[#5C4333]/65">Define cuántos bolívares (VES) equivale 1 dólar (USD)</p>
+                </div>
+            </div>
+            <div class="flex flex-col sm:flex-row gap-4 items-end">
+                <div class="flex-1">
+                    <label class="block text-xs font-bold uppercase tracking-wider text-[#5C4333]/60 mb-1">1 USD = ? VES</label>
+                    <div class="flex items-center gap-2">
+                        <span class="text-sm font-bold text-[#5C4333]">1 USD =</span>
+                        <input type="number" id="exchange-rate-input" step="0.01" min="0" placeholder="0.00"
+                            class="block w-full max-w-[180px] px-4 py-2.5 bg-[#FAF6F0]/60 border border-[#EFE5D9] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#B56B45] text-sm font-bold text-[#B56B45]">
+                        <span class="text-sm font-bold text-[#5C4333]">VES</span>
+                    </div>
+                </div>
+                <button onclick="guardarTasaCambio()" id="save-rate-btn" class="px-6 py-2.5 bg-[#B56B45] hover:bg-[#8C5435] text-white font-bold rounded-xl text-xs uppercase tracking-wider transition-all cursor-pointer shadow-sm whitespace-nowrap">Guardar Tasa</button>
+            </div>
+            <div id="exchange-rate-status" class="text-xs text-emerald-600 font-medium hidden transition-opacity duration-300"></div>
+        </section>
+
+        <!-- Horarios de Atención del Negocio -->
+        <section class="bg-white rounded-3xl border border-[#EFE5D9] p-6 sm:p-8 shadow-md space-y-6">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-[#EFE5D9] pb-4">
+                <div>
+                    <h3 class="text-2xl font-extrabold tracking-tight">Horarios de Atención</h3>
+                    <p class="text-sm text-[#5C4333]/65">Configura los días y horas en que el negocio está abierto</p>
+                </div>
+                <button onclick="loadBusinessHours()" class="mt-3 sm:mt-0 px-4 py-2 bg-[#B56B45] hover:bg-[#8C5435] text-white font-bold rounded-xl text-xs uppercase tracking-wider transition-all cursor-pointer">↻ Recargar</button>
+            </div>
+            <div id="business-hours-container">
+                <div id="business-hours-form" class="space-y-4">
+                    <p class="text-sm text-[#5C4333]/50 text-center py-4">Cargando horarios...</p>
+                </div>
+                <div class="flex justify-end pt-4 border-t border-[#EFE5D9]">
+                    <button onclick="saveBusinessHours()" class="px-6 mt-3 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs uppercase tracking-wider transition-all cursor-pointer shadow-sm">Guardar Horarios</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Vista General de Agenda -->
+        <section class="bg-white rounded-3xl border border-[#EFE5D9] p-6 sm:p-8 shadow-md space-y-6">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-[#EFE5D9] pb-4">
+                <div>
+                    <h3 class="text-2xl font-extrabold tracking-tight">Agenda del Día</h3>
+                    <p class="text-sm text-[#5C4333]/65">Visualiza las citas programadas</p>
+                </div>
+                <div class="mt-3 sm:mt-0 flex items-center gap-2">
+                    <input type="date" id="overview-date" value="<?php echo date('Y-m-d'); ?>"
+                        class="px-3 py-2 bg-[#FAF6F0]/60 border border-[#EFE5D9] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#B56B45]">
+                    <button onclick="loadScheduleOverview()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs uppercase tracking-wider transition-all cursor-pointer">Ver</button>
+                </div>
+            </div>
+            <div id="schedule-overview-container">
+                <p class="text-sm text-[#5C4333]/50 text-center py-4">Selecciona una fecha para ver la agenda.</p>
             </div>
         </section>
 
@@ -148,10 +215,15 @@ $baseUrl = $baseUrl ?? '/HomeWorks/Design_Project';
                         <textarea id="description" name="description" required rows="3" placeholder="Describe materiales, duración, etc."
                             class="block w-full px-4 py-2.5 bg-[#FAF6F0]/60 border border-[#EFE5D9] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#B56B45] text-sm"></textarea>
                     </div>
-                    <div class="grid grid-cols-2 gap-4">
+                    <div class="grid grid-cols-3 gap-4">
                         <div>
                             <label class="block text-xs font-bold uppercase tracking-wider text-[#5C4333]/60 mb-1">Precio (USD)</label>
                             <input type="number" id="price" name="price" step="0.01" min="1" required placeholder="0.00"
+                                class="block w-full px-4 py-2.5 bg-[#FAF6F0]/60 border border-[#EFE5D9] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#B56B45] text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-[#5C4333]/60 mb-1">Duración (min)</label>
+                            <input type="number" id="duration_minutes" name="duration_minutes" min="15" max="480" value="60" required
                                 class="block w-full px-4 py-2.5 bg-[#FAF6F0]/60 border border-[#EFE5D9] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#B56B45] text-sm">
                         </div>
                         <div>
@@ -234,7 +306,8 @@ $baseUrl = $baseUrl ?? '/HomeWorks/Design_Project';
                                 <th class="px-6 py-4 text-left text-xs font-bold text-[#5C4333]/50 uppercase tracking-widest">Cliente</th>
                                 <th class="px-6 py-4 text-left text-xs font-bold text-[#5C4333]/50 uppercase tracking-widest">Peinado</th>
                                 <th class="px-6 py-4 text-left text-xs font-bold text-[#5C4333]/50 uppercase tracking-widest">Precio</th>
-                                <th class="px-6 py-4 text-left text-xs font-bold text-[#5C4333]/50 uppercase tracking-widest">Fecha</th>
+                                <th class="px-6 py-4 text-left text-xs font-bold text-[#5C4333]/50 uppercase tracking-widest">Cita</th>
+                                <th class="px-6 py-4 text-left text-xs font-bold text-[#5C4333]/50 uppercase tracking-widest">Trabajador</th>
                                 <th class="px-6 py-4 text-left text-xs font-bold text-[#5C4333]/50 uppercase tracking-widest">Estado</th>
                                 <th class="px-6 py-4 text-right text-xs font-bold text-[#5C4333]/50 uppercase tracking-widest">Acciones</th>
                             </tr>
@@ -248,7 +321,21 @@ $baseUrl = $baseUrl ?? '/HomeWorks/Design_Project';
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-[#5C4333]/85"><?php echo htmlspecialchars($res['hairstyle_name']); ?></td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-extrabold text-[#B56B45]">$<?php echo number_format($res['price'], 2); ?></td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-[#5C4333]/75"><?php echo date('d M, Y', strtotime($res['reserved_at'])); ?></td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-[#5C4333]/75">
+                                        <?php if (!empty($res['appointment_date'])): ?>
+                                            <?php echo date('d M, Y', strtotime($res['appointment_date'])); ?><br>
+                                            <span class="text-xs"><?php echo date('g:i A', strtotime($res['appointment_time'])); ?></span>
+                                        <?php else: ?>
+                                            <span class="text-xs text-[#5C4333]/40">Sin cita</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-[#5C4333]/75">
+                                        <?php if (!empty($res['worker_name'])): ?>
+                                            <?php echo htmlspecialchars($res['worker_name']); ?>
+                                        <?php else: ?>
+                                            <span class="text-xs text-[#5C4333]/40">—</span>
+                                        <?php endif; ?>
+                                    </td>
                                     <td class="px-6 py-4 whitespace-nowrap"><?php if ($res['status'] === 'pending'): ?><span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200/50">Pendiente</span><?php elseif ($res['status'] === 'confirmed'): ?><span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/50">Confirmado</span><?php else: ?><span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-stone-100 text-stone-600 border border-stone-200">Cancelado</span><?php endif; ?></td>
                                     <td class="px-6 py-4 whitespace-nowrap text-right text-xs font-semibold space-x-1.5">
                                         <?php if ($res['status'] === 'pending'): ?>

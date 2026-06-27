@@ -1,6 +1,6 @@
 # MiMundoTrenzas — Sistema MVC con RBAC, Pagos y Clean Architecture
 
-Sistema web completo para gestión de peinados de trenzas, construido con **PHP 8.1+ puro** siguiendo el patrón **MVC**, arquitectura limpia (**Clean Code**, **SOLID**, **DRY**) y soporte completo de roles y permisos (**RBAC**).
+Sistema web completo para gestión de peinados de trenzas, construido con **PHP 8.1+ puro** siguiendo el patrón **MVC**, arquitectura limpia (**Clean Code**, **SOLID**, **DRY**, **Result Pattern**) y soporte completo de roles y permisos (**RBAC**).
 
 ---
 
@@ -15,13 +15,15 @@ Sistema web completo para gestión de peinados de trenzas, construido con **PHP 
   - [Flujo de una Petición](#flujo-de-una-petición)
   - [Capa de Enrutamiento y Middlewares](#capa-de-enrutamiento-y-middlewares)
   - [Gestión de Roles y Permisos (RBAC)](#gestión-de-roles-y-permisos-rbac)
+  - [Result Pattern](#result-pattern)
   - [Capa de Servicios](#capa-de-servicios)
   - [Inyección de Dependencias](#inyección-de-dependencias)
-- [Pasarela de Pagos y API de Tipo de Cambio](#pasarela-de-pagos-y-api-de-tipo-de-cambio)
+- [Pasarela de Pagos y Tipo de Cambio](#pasarela-de-pagos-y-tipo-de-cambio)
 - [Base de Datos](#base-de-datos)
 - [Seguridad](#seguridad)
 - [Cumplimiento de Principios de Diseño](#cumplimiento-de-principios-de-diseño)
 - [Cómo Agregar un Nuevo Módulo](#cómo-agregar-un-nuevo-módulo)
+- [Tecnologías Utilizadas](#tecnologías-utilizadas)
 
 ---
 
@@ -32,13 +34,15 @@ Sistema web completo para gestión de peinados de trenzas, construido con **PHP 
 ### Características Principales
 
 - **RBAC (Role-Based Access Control):** Tres roles — `admin`, `worker`, `client` — con jerarquía de permisos.
-- **Pasarela de Pagos:** Integración con Stripe y cálculo dinámico de precios en USD vía API externa de tipo de cambio.
+- **Pasarela de Pagos:** Integración con Stripe y cálculo dinámico de precios en USD + VES.
 - **Clean Architecture:** Separación en capas (Router → Middleware → Controller → Service → Model → View).
+- **Result Pattern:** `Core\Result` con `success()`/`failure()` factories elimina try-catch en modelos y estandariza respuestas JSON.
 - **Inyección de Dependencias:** Todos los componentes reciben sus dependencias por constructor.
 - **Configuración por .env:** Variables de entorno centralizadas (BD, API keys, URLs).
 - **Middlewares:** Protección de rutas por autenticación y rol.
 - **Vistas Presentacionales:** Lógica condicional eliminada de las vistas; toda la información se prepara en los controladores/servicios.
-- **Documentación PHPDoc:** Todo el código PHP está documentado con estándares PHPDoc.
+- **Gestión de Horarios:** Sistema completo de agenda con horarios de atención configurables por el administrador, disponibilidad individual por trabajador, generación dinámica de slots y detección de conflictos de horario.
+- **Tipo de Cambio Manual:** Administrador puede fijar tasa USD→VES desde el panel; la tasa se usa en los catálogos de usuario.
 
 ---
 
@@ -50,6 +54,7 @@ Sistema web completo para gestión de peinados de trenzas, construido con **PHP 
 | MySQL        | 5.7+ / MariaDB 10.3+    |
 | Apache       | 2.4+ con `mod_rewrite`   |
 | XAMPP        | 8.x (incluye todo lo anterior) |
+| Node.js      | 18+ (para Tailwind CSS)  |
 
 ---
 
@@ -71,14 +76,19 @@ cp .env.example .env
 # Editar .env con tus credenciales reales
 # - DB_HOST, DB_NAME, DB_USER, DB_PASS
 # - STRIPE_SECRET_KEY, STRIPE_PUBLISHABLE_KEY
-# - EXCHANGE_RATE_API_KEY
 ```
 
-### 3. Iniciar servicios
+### 3. Compilar Tailwind CSS
+
+```bash
+npx tailwindcss -i ./src/input.css -o ./src/output.css
+```
+
+### 4. Iniciar servicios
 
 Iniciar **Apache** y **MySQL** desde el panel de control de XAMPP.
 
-### 4. Acceder al sistema
+### 5. Acceder al sistema
 
 ```
 http://localhost/HomeWorks/Design_Project/login
@@ -86,7 +96,7 @@ http://localhost/HomeWorks/Design_Project/login
 
 > La base de datos, tablas y datos iniciales se crean **automáticamente** al acceder al sistema por primera vez.
 
-### 5. Credenciales por defecto
+### 6. Credenciales por defecto
 
 | Rol        | Usuario        | Email                          | Contraseña  |
 |------------|----------------|--------------------------------|-------------|
@@ -109,11 +119,8 @@ Todas las configuraciones se manejan a través del archivo `.env` en la raíz de
 | `DB_USER`                 | Usuario de la base de datos                  | `root`                           |
 | `DB_PASS`                 | Contraseña de la base de datos               | ``                               |
 | `DB_CHARSET`              | Character set                                | `utf8mb4`                        |
-| `BASE_CURRENCY`           | Moneda base de precios (ISO 4217)            | `MXN`                            |
 | `STRIPE_SECRET_KEY`       | Clave secreta de Stripe                      | `sk_test_...`                    |
 | `STRIPE_PUBLISHABLE_KEY`  | Clave pública de Stripe                      | `pk_test_...`                    |
-| `EXCHANGE_RATE_API_KEY`   | Clave de ExchangeRate-API                    | `abc123...`                      |
-| `EXCHANGE_RATE_API_URL`   | URL base de la API de tipo de cambio         | `https://v6.exchangerate-api.com/v6`|
 
 ---
 
@@ -125,16 +132,16 @@ Design_Project/
 ├── .env                          ← Variables de entorno (NO subir a git)
 ├── .env.example                  ← Plantilla de variables de entorno
 ├── .htaccess                     ← Reglas de reescritura de Apache
-├── autoload.php                  ← Autoloader PSR-4
+├── bootstrap.php                 ← Carga explícita de todas las clases (reemplaza autoloader)
 ├── index.php                     ← Front Controller (punto de entrada único)
-├── database.sql                  ← Script SQL de referencia
 ├── package.json                  ← Dependencias de Tailwind CSS
 │
 ├── Config/                       ← Capa de configuración
 │   ├── Environment.php           ← Lector de variables de entorno (.env)
-│   └── database.php              ← Conexión PDO Singleton + migraciones
+│   └── database.php              ← Conexión PDO Singleton + migraciones automáticas
 │
 ├── Core/                         ← Núcleo del framework
+│   ├── Result.php                ← Result Pattern (success/failure, toArray)
 │   ├── Router.php                ← Motor de enrutamiento con middleware pipeline
 │   ├── MiddlewareInterface.php   ← Contrato para middlewares
 │   └── Middleware/               ← Middlewares concretos
@@ -145,23 +152,27 @@ Design_Project/
 │   ├── Controllers/              ← Controladores "thin"
 │   │   ├── AuthController.php    ← Login y registro
 │   │   ├── DashboardController.php ← Routing de dashboards por rol
-│   │   ├── WorkerController.php  ← CRUD peinados + reservas
-│   │   ├── AdminController.php   ← Gestión trabajadores + hereda worker
-│   │   └── ClientController.php  ← Reservas + pagos
+│   │   ├── WorkerController.php  ← CRUD peinados + reservas + disponibilidad
+│   │   ├── AdminController.php   ← Gestión trabajadores + horarios + tipo de cambio + hereda worker
+│   │   └── ClientController.php  ← Reservas + pagos + selección de cita
 │   │
-│   ├── Services/                 ← Capa de servicios (lógica de negocio)
+│   ├── Services/                 ← Capa de servicios (lógica de negocio, retorna Result)
 │   │   ├── AuthService.php       ← Lógica de autenticación
 │   │   ├── UserService.php       ← Gestión de usuarios/trabajadores
-│   │   ├── HairstyleService.php  ← Lógica del catálogo de peinados
+│   │   ├── HairstyleService.php  ← CRUD del catálogo de peinados
 │   │   ├── ReservationService.php← Lógica de reservas
 │   │   ├── PaymentService.php    ← Procesamiento de pagos (Stripe)
-│   │   └── ExchangeRateService.php ← Consumo de API de tipo de cambio
+│   │   ├── ExchangeRateService.php ← API de tipo de cambio + tasa manual
+│   │   └── ScheduleService.php   ← Lógica de horarios, slots y disponibilidad
 │   │
-│   ├── Models/                   ← Capa de acceso a datos
+│   ├── Models/                   ← Capa de acceso a datos (PDO, sin try-catch)
 │   │   ├── UserModel.php
 │   │   ├── HairstyleModel.php
 │   │   ├── ReservationModel.php
-│   │   └── PaymentModel.php
+│   │   ├── PaymentModel.php
+│   │   ├── BusinessHoursModel.php
+│   │   ├── WorkerScheduleModel.php
+│   │   └── ExchangeRateModel.php
 │   │
 │   └── Views/                    ← Plantillas HTML (puramente presentacionales)
 │       ├── login.php
@@ -209,7 +220,7 @@ index.php (Front Controller)
    │
    ├─ Environment::load()            ← Carga .env
    ├─ session_start()
-   ├─ require autoload.php           ← Registra autoloader PSR-4
+   ├─ require bootstrap.php          ← Carga explícita de todas las clases
    ├─ Database::getInstance()        ← Conexión PDO (lee DB_* de .env)
    ├─ new Router($db)                ← Instancia el enrutador
    ├─ require routes/web.php         ← Registra rutas con middlewares
@@ -239,7 +250,7 @@ index.php (Front Controller)
           │     └─ Sí ↓
           │
           ▼
-     Controller → Service → Model → BD
+     Controller → Service (retorna Result) → Model → BD
           │
           ▼
      Vista → HTML al navegador
@@ -250,10 +261,9 @@ index.php (Front Controller)
 El `Core\Router` soporta **middlewares** que se ejecutan como una cadena (patrón *Chain of Responsibility*) antes de llegar al controlador:
 
 ```php
-// Registrar una ruta con middlewares
 $router->post('admin/workers/store', AdminController::class, 'storeWorker', [
-    AuthMiddleware::class,        // 1. Verificar sesión
-    RoleMiddleware::class . ':admin', // 2. Verificar rol admin
+    AuthMiddleware::class,
+    RoleMiddleware::class . ':admin',
 ]);
 ```
 
@@ -269,18 +279,21 @@ $router->post('admin/workers/store', AdminController::class, 'storeWorker', [
 El sistema implementa **tres roles** con jerarquía de herencia:
 
 ```
-┌─────────────────────────────────────────────────┐
-│                    admin                         │
-│  Hereda: worker + client                         │
-│  Exclusivo: CRUD de trabajadores                  │
-├─────────────────────────────────────────────────┤
-│                   worker                         │
-│  Hereda: client                                   │
-│  Operativo: CRUD catálogo + gestionar reservas   │
-├─────────────────────────────────────────────────┤
-│                   client                         │
-│  Visualización: catálogo + reservas + pagos       │
-└─────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────┐
+│                        admin                             │
+│  Hereda: worker + client                                 │
+│  Exclusivo: CRUD trabajadores, horarios, tipo de cambio  │
+│  Agenda: vista general de citas del día                  │
+├─────────────────────────────────────────────────────────┤
+│                       worker                             │
+│  Hereda: client                                          │
+│  Operativo: CRUD catálogo, gestionar reservas            │
+│  Agenda: gestionar su propia disponibilidad semanal      │
+├─────────────────────────────────────────────────────────┤
+│                       client                             │
+│  Visualización: catálogo + reservas + pagos              │
+│  Agenda: seleccionar fecha/hora al apartar peinado      │
+└─────────────────────────────────────────────────────────┘
 ```
 
 **Herencia de roles (implementada en `RoleMiddleware`):**
@@ -293,103 +306,133 @@ private const ROLE_HIERARCHY = [
 ];
 ```
 
-Esto significa que un `admin` puede acceder a rutas de `worker` y `client`, mientras que un `client` solo puede acceder a rutas de `client`.
+### Result Pattern
+
+Todas las operaciones de mutación en los **Services** retornan un objeto `Core\Result` en lugar de arrays genéricos:
+
+```php
+$result = $this->authService->login($email, $password);
+
+if ($result->isSuccess()) {
+    $userId = $result->getValue(); // mixed
+    // respuesta exitosa
+} else {
+    $error = $result->getMessage(); // string
+    // manejar error
+}
+
+// Para respuestas JSON:
+echo json_encode($result->toArray());
+// { success: true/false, data: mixed, message: string }
+```
+
+**Ventajas:**
+- Elimina la necesidad de try-catch en los Models (las excepciones PDO burbujean hasta los Services, donde se envuelven en `Result::failure()`).
+- Estandariza el formato de respuesta JSON (`{success, data, message}`).
+- Los controladores siempre usan `toArray()` para serializar.
 
 ### Capa de Servicios
 
-Todos los controladores son **"thin controllers"** que delegan la lógica de negocio a servicios:
+Todos los controladores son **"thin controllers"** que delegan la lógica de negocio a servicios. Los métodos de mutación retornan `Result`; los de consulta retornan `array|false` directamente.
 
 | Servicio               | Responsabilidad                                            |
-|------------------------|-----------------------------------------------------------|
+|------------------------|------------------------------------------------------------|
 | `AuthService`          | Login, registro, gestión de sesiones                       |
-| `UserService`          | CRUD de trabajadores, validación de negocio                 |
-| `HairstyleService`     | CRUD del catálogo de peinados                               |
-| `ReservationService`   | Creación, consulta y actualización de reservas              |
-| `PaymentService`       | Procesamiento de pagos vía Stripe + cálculo de divisas     |
-| `ExchangeRateService`  | Consumo de API externa para tipo de cambio (ExchangeRate-API)|
+| `UserService`          | CRUD de trabajadores, promoción/democión de roles          |
+| `HairstyleService`     | CRUD del catálogo de peinados                              |
+| `ReservationService`   | Creación, consulta y actualización de reservas             |
+| `PaymentService`       | Procesamiento de pagos vía Stripe                          |
+| `ExchangeRateService`  | API externa + tasa manual fijada por admin (USD→VES)       |
+| `ScheduleService`      | Gestión de horarios, disponibilidad de trabajadores, slots, conflictos |
 
 ### Inyección de Dependencias
 
 Todas las dependencias se inyectan a través de constructores (SOLID - DIP):
 
 ```php
-// Ejemplo: AdminController recibe PDO y crea servicios
 class AdminController {
-    private UserService $userService;
-    private HairstyleService $hairstyleService;
-
     public function __construct(\PDO $dbConnection) {
         $userModel = new UserModel($dbConnection);
         $this->userService = new UserService($userModel);
-        // ...
     }
 }
 ```
 
 ---
 
-## Pasarela de Pagos y API de Tipo de Cambio
+## Pasarela de Pagos y Tipo de Cambio
 
-### Flujo de Pago Completo
+### Flujo de Pago
 
 ```
 1. Cliente selecciona peinado
-         │
 2. Crea reserva (status: pending)
-         │
 3. Hace clic en "Pagar Ahora"
-         │
-4. Sistema llama a ExchangeRate-API
-   → Obtiene tasa MXN → USD
-         │
-5. Muestra precio convertido en modal
-         │
-6. Cliente confirma el pago
-         │
-7. Sistema llama a Stripe API
-   → Crea PaymentIntent
-   → Confirma con método de pago
-         │
-8. Registra pago en BD (tabla payments)
-         │
-9. Actualiza reserva a "confirmed"
-         │
-10. Muestra confirmación al cliente
+4. Sistema muestra precio en USD + VES
+5. Cliente confirma
+6. Sistema procesa pago y registra en tabla payments
+7. Actualiza reserva a "confirmed"
 ```
 
-### API de Tipo de Cambio (ExchangeRate-API)
+### Tipo de Cambio (USD → VES)
 
-El `ExchangeRateService` consume la API de [ExchangeRate-API](https://www.exchangerate-api.com/) para obtener tasas de cambio en tiempo real:
+El `ExchangeRateService` combina tres fuentes en orden de prioridad:
 
-```php
-// Ejemplo de uso
-$exchangeService = new ExchangeRateService();
-$result = $exchangeService->convert(1500, 'MXN', 'USD');
-// Resultado: ['success' => true, 'converted_amount' => 87.00, 'rate' => 0.058]
-```
+1. **Tasa manual** (tabla `exchange_rates`) — fijada por el admin desde el panel "Tipo de Cambio"
+2. **Caché en sesión** (1 hora) — evita llamadas excesivas a la API
+3. **API externa** (ExchangeRate-API) — consulta en tiempo real con fallback hardcodeado
 
-**Características:**
-- Caché en sesión (5 minutos) para evitar llamadas excesivas
-- Tasas de respaldo hardcodeadas cuando la API no está disponible
-- Configuración completa desde `.env`
+La tasa se muestra en el dashboard del usuario: etiqueta "1 USD = X.XX VES" y precios convertidos en el catálogo.
 
 ### Integración con Stripe
 
-El `PaymentService` integra [Stripe](https://stripe.com/) para procesar pagos:
+El `PaymentService` integra [Stripe](https://stripe.com/) para procesar pagos. En modo desarrollo simula pagos cuando la API key no está configurada.
 
-- **Modo desarrollo:** Simula pagos cuando la API key no está configurada
-- **Modo producción:** Llamadas reales a la API de Stripe vía cURL
-- Los pagos se registran en la tabla `payments` con tasa de cambio y monto en USD
+---
+
+## Gestión de Horarios (Agenda)
+
+El sistema incluye un módulo completo de **gestión de horarios** con citas programadas, disponibilidad de trabajadores y detección automática de conflictos.
+
+### Arquitectura del Módulo
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    ScheduleService                           │
+│  - Gestión de horarios de atención (business hours)         │
+│  - Gestión de disponibilidad de trabajadores                │
+│  - Generación de slots disponibles (cada 30 min)            │
+│  - Detección de conflictos de horario                       │
+│  - Reserva de citas con fecha/hora/trabajador               │
+│  - Vista general de agenda por fecha                        │
+└─────────────────────────────────────────────────────────────┘
+         │                              │
+         ▼                              ▼
+┌──────────────────┐      ┌──────────────────────────┐
+│ BusinessHoursModel│      │ WorkerScheduleModel       │
+│ - CRUD horarios   │      │ - CRUD disponibilidad     │
+│ - Horas por día   │      │ - Búsqueda trabajadores   │
+│  (0=Domingo..6=Sa)│      │   disponibles en fecha    │
+└──────────────────┘      └──────────────────────────┘
+```
+
+### Roles y Permisos
+
+| Rol      | Puede gestionar                            |
+|----------|--------------------------------------------|
+| `admin`  | Horarios de atención del negocio + ver agenda general + ver disponibilidad de cualquier trabajador |
+| `worker` | Su propia disponibilidad semanal            |
+| `client` | Seleccionar fecha/hora al apartar un peinado |
 
 ---
 
 ## Base de Datos
 
-### Esquema Actualizado (v2.0)
-
 **Base de datos:** `auth_system_db` | **Charset:** `utf8mb4_unicode_ci`
 
-#### Tabla `users` (RBAC)
+Las migraciones se ejecutan automáticamente en `config/database.php` al iniciar la aplicación. El constructor detecta errores de tablespace corrupto (MySQL 1813/1932) y recrea las tablas automáticamente.
+
+### Tabla `users` (RBAC)
 
 | Columna      | Tipo                                                   | Descripción              |
 |-------------|--------------------------------------------------------|--------------------------|
@@ -400,41 +443,84 @@ El `PaymentService` integra [Stripe](https://stripe.com/) para procesar pagos:
 | `role`      | `ENUM('admin', 'worker', 'client') DEFAULT 'client'`  | Rol del usuario          |
 | `created_at`| `TIMESTAMP DEFAULT CURRENT_TIMESTAMP`                  | Fecha de creación        |
 
-#### Tabla `hairstyles`
+### Tabla `hairstyles`
 
-| Columna      | Tipo                        | Descripción              |
-|-------------|-----------------------------|--------------------------|
-| `id`        | `INT AUTO_INCREMENT PRIMARY KEY` | ID único             |
-| `name`      | `VARCHAR(100) NOT NULL`    | Nombre del peinado       |
-| `description`| `TEXT NOT NULL`            | Descripción detallada    |
-| `price`     | `DECIMAL(10,2) NOT NULL`   | Precio en moneda base    |
-| `image_url` | `VARCHAR(255) NOT NULL`    | URL de imagen            |
-| `status`    | `ENUM('active', 'inactive')`| Estado                  |
+| Columna           | Tipo                                  | Descripción                    |
+|------------------|---------------------------------------|--------------------------------|
+| `id`             | `INT AUTO_INCREMENT PRIMARY KEY`      | ID único                       |
+| `name`           | `VARCHAR(100) NOT NULL`               | Nombre del peinado             |
+| `description`    | `TEXT NOT NULL`                       | Descripción detallada          |
+| `price`          | `DECIMAL(10,2) NOT NULL`              | Precio en USD                  |
+| `duration_minutes`| `INT NOT NULL DEFAULT 60`            | Duración estimada del servicio |
+| `image_url`      | `VARCHAR(255) NOT NULL`               | URL de imagen                  |
+| `status`         | `ENUM('active', 'inactive')`          | Estado                         |
+| `created_at`     | `TIMESTAMP DEFAULT CURRENT_TIMESTAMP` | Fecha de creación              |
 
-#### Tabla `reservations`
+### Tabla `reservations`
 
-| Columna       | Tipo                        | Descripción              |
-|--------------|-----------------------------|--------------------------|
-| `id`         | `INT AUTO_INCREMENT PRIMARY KEY` | ID único             |
-| `user_id`    | `INT NOT NULL (FK)`         | Cliente que reserva       |
-| `hairstyle_id`| `INT NOT NULL (FK)`        | Peinado reservado        |
-| `status`     | `ENUM('pending', 'confirmed', 'cancelled')` | Estado |
-| `reserved_at`| `TIMESTAMP`                 | Fecha de reserva         |
+| Columna           | Tipo                                              | Descripción                    |
+|------------------|---------------------------------------------------|--------------------------------|
+| `id`             | `INT AUTO_INCREMENT PRIMARY KEY`                  | ID único                       |
+| `user_id`        | `INT NOT NULL (FK -> users.id)`                   | Cliente que reserva            |
+| `hairstyle_id`   | `INT NOT NULL (FK -> hairstyles.id)`              | Peinado reservado              |
+| `worker_id`      | `INT DEFAULT NULL (FK -> users.id)`               | Trabajador asignado            |
+| `appointment_date`| `DATE DEFAULT NULL`                              | Fecha de la cita               |
+| `appointment_time`| `TIME DEFAULT NULL`                             | Hora de inicio de la cita      |
+| `end_time`       | `TIME DEFAULT NULL`                               | Hora de fin estimada           |
+| `status`         | `ENUM('pending', 'confirmed', 'cancelled')`       | Estado                         |
+| `reserved_at`    | `TIMESTAMP DEFAULT CURRENT_TIMESTAMP`             | Fecha de reserva               |
 
-#### Tabla `payments` (Nueva)
+### Tabla `payments`
 
-| Columna          | Tipo                        | Descripción              |
-|-----------------|-----------------------------|--------------------------|
-| `id`            | `INT AUTO_INCREMENT PRIMARY KEY` | ID único             |
-| `reservation_id`| `INT NOT NULL (FK)`         | Reserva asociada         |
-| `user_id`       | `INT NOT NULL (FK)`         | Usuario que pagó         |
-| `amount`        | `DECIMAL(10,2)`             | Monto en moneda base     |
-| `currency`      | `VARCHAR(3)`                | Código ISO de moneda     |
-| `exchange_rate` | `DECIMAL(10,6)`             | Tasa de cambio aplicada  |
-| `amount_usd`    | `DECIMAL(10,2)`             | Monto equivalente en USD |
-| `payment_method`| `VARCHAR(50)`               | Método de pago           |
-| `transaction_id`| `VARCHAR(255)`              | ID de transacción        |
-| `status`        | `ENUM(...)`                 | Estado del pago          |
+| Columna          | Tipo                                    | Descripción                   |
+|-----------------|-----------------------------------------|-------------------------------|
+| `id`            | `INT AUTO_INCREMENT PRIMARY KEY`        | ID único                      |
+| `reservation_id`| `INT NOT NULL (FK -> reservations.id)`  | Reserva asociada              |
+| `user_id`       | `INT NOT NULL (FK -> users.id)`         | Usuario que pagó              |
+| `amount`        | `DECIMAL(10,2)`                         | Monto en moneda base          |
+| `currency`      | `VARCHAR(3)`                            | Código ISO de moneda          |
+| `exchange_rate` | `DECIMAL(10,6)`                         | Tasa de cambio aplicada       |
+| `amount_usd`    | `DECIMAL(10,2)`                         | Monto equivalente en USD      |
+| `payment_method`| `VARCHAR(50)`                           | Método de pago                |
+| `transaction_id`| `VARCHAR(255)`                          | ID de transacción             |
+| `status`        | `ENUM('pending','completed','failed','refunded')` | Estado del pago    |
+| `created_at`    | `TIMESTAMP DEFAULT CURRENT_TIMESTAMP`   | Fecha de creación             |
+
+### Tabla `business_hours`
+
+| Columna       | Tipo                                  | Descripción                              |
+|--------------|---------------------------------------|------------------------------------------|
+| `id`         | `INT AUTO_INCREMENT PRIMARY KEY`      | ID único                                 |
+| `day_of_week`| `TINYINT NOT NULL`                    | Día de la semana (0=Domingo, ..., 6=Sábado) |
+| `open_time`  | `TIME NOT NULL`                       | Hora de apertura                         |
+| `close_time` | `TIME NOT NULL`                       | Hora de cierre                           |
+| `is_active`  | `TINYINT(1) DEFAULT 1`               | 1=Abierto, 0=Cerrado                     |
+| `UNIQUE KEY` | `uq_day (day_of_week)`               | Un solo registro por día                 |
+
+### Tabla `worker_schedules`
+
+| Columna       | Tipo                                      | Descripción                              |
+|--------------|-------------------------------------------|------------------------------------------|
+| `id`         | `INT AUTO_INCREMENT PRIMARY KEY`          | ID único                                 |
+| `worker_id`  | `INT NOT NULL (FK -> users.id)`           | ID del trabajador                        |
+| `day_of_week`| `TINYINT NOT NULL`                        | Día de la semana (0=Domingo, ..., 6=Sábado) |
+| `start_time` | `TIME NOT NULL`                           | Hora de inicio de disponibilidad         |
+| `end_time`   | `TIME NOT NULL`                           | Hora de fin de disponibilidad            |
+| `is_active`  | `TINYINT(1) DEFAULT 1`                   | 1=Disponible, 0=No disponible            |
+| `FOREIGN KEY`| `(worker_id) REFERENCES users(id) ON DELETE CASCADE` |
+| `UNIQUE KEY` | `uq_worker_day (worker_id, day_of_week)` | Un solo registro por trabajador y día    |
+
+### Tabla `exchange_rates`
+
+| Columna       | Tipo                                    | Descripción                              |
+|--------------|-----------------------------------------|------------------------------------------|
+| `id`         | `INT AUTO_INCREMENT PRIMARY KEY`        | ID único                                 |
+| `from_currency`| `VARCHAR(3) NOT NULL`                 | Moneda origen (ej. USD)                  |
+| `to_currency`| `VARCHAR(3) NOT NULL`                   | Moneda destino (ej. VES)                 |
+| `rate`       | `DECIMAL(14,6) NOT NULL`                | Tasa de cambio                           |
+| `updated_by` | `INT DEFAULT NULL (FK -> users.id)`     | Admin que fijó la tasa                   |
+| `updated_at` | `TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP` |
+| `UNIQUE KEY` | `uq_pair (from_currency, to_currency)` | Un solo registro por par de monedas      |
 
 ---
 
@@ -442,16 +528,15 @@ El `PaymentService` integra [Stripe](https://stripe.com/) para procesar pagos:
 
 | Medida                         | Implementación                                           | Ubicación              |
 |-------------------------------|---------------------------------------------------------|------------------------|
-| **Anti-SQL Injection**        | Prepared statements con `bindParam()` tipado            | Todos los Models       |
+| **Anti-SQL Injection**        | Prepared statements con bindParam() tipado               | Todos los Models       |
 | **Anti-XSS**                  | `htmlspecialchars()` en toda salida dinámica             | Controladores + Vistas |
 | **Hash de contraseñas**       | `password_hash()` con `PASSWORD_DEFAULT` (bcrypt)       | AuthService            |
 | **Verificación de password**  | `password_verify()` (comparación segura contra timing)  | AuthService            |
 | **Anti-Session Fixation**     | `session_regenerate_id(true)` al autenticarse           | AuthService            |
 | **Timeout de sesión**         | Expiración automática después de 30 minutos             | AuthMiddleware         |
-| **Protección de rutas**       | Middlewares de autenticación y autorización por rol      | Router + Middlewares    |
+| **Protección de rutas**       | Middlewares de autenticación y autorización por rol      | Router + Middlewares   |
 | **Variables de entorno**      | API keys y credenciales en `.env`, nunca en código       | Config\Environment     |
 | **Bloqueo de .env**           | Apache deniega acceso directo a `.env`                   | .htaccess              |
-| **Sanitización de URI**       | `FILTER_SANITIZE_URL`                                    | Router                 |
 | **Error genérico en login**   | Mensaje único para credenciales inválidas                | AuthService            |
 
 ---
@@ -463,30 +548,30 @@ El `PaymentService` integra [Stripe](https://stripe.com/) para procesar pagos:
 | Principio | Implementación |
 |-----------|---------------|
 | **S** - Single Responsibility | Cada clase tiene una única responsabilidad: Controllers manejan HTTP, Services manejan negocio, Models manejan datos, Middlewares manejan cross-cutting concerns. |
-| **O** - Open/Closed | El sistema es extensible (nuevos middlewares, servicios, controladores) sin modificar código existente. `RoleMiddleware` soporta nuevos roles sin cambios. |
+| **O** - Open/Closed | El sistema es extensible (nuevos middlewares, servicios, controladores) sin modificar código existente. |
 | **L** - Liskov Substitution | Los middlewares implementan `MiddlewareInterface` y son intercambiables en la cadena de pipeline. |
-| **I** - Interface Segregation | `MiddlewareInterface` es una interfaz pequeña y enfocada con un solo método `handle()`. |
-| **D** - Dependency Inversion | Todos los componentes dependen de abstractions (interfaces, modelos) inyectadas por constructor, no de implementaciones concretas. |
+| **I** - Interface Segregation | `MiddlewareInterface` es una interfaz pequeña con un solo método `handle()`. |
+| **D** - Dependency Inversion | Todos los componentes dependen de abstracciones inyectadas por constructor, no de implementaciones concretas. |
 
-### DRY (Don't Repeat Yourself)
+### Result Pattern
 
-- Lógica de validación centralizada en Services.
-- Middlewares reutilizables para auth y roles.
-- Configuración centralizada en `.env` (eliminación de hardcoding).
-- Helper methods compartidos (`sanitize()`, `render()`) en controladores.
+- `Core\Result` con `success()`/`failure()` factories reemplaza los arrays genéricos `['success' => true/false]`.
+- Los Models ya no tienen try-catch; las excepciones PDO burbujean hasta el Service, donde se envuelven en `Result::failure()`.
+- Los Controladores serializan con `toArray()` para respuestas JSON consistentes.
 
 ### Clean Code
 
 - Nombres descriptivos y consistentes.
 - Métodos cortos y enfocados.
-- Comentarios PHPDoc en todo el código.
+- Sin docblocks redundantes (el tipado PHP 8.1+ es auto-documentado).
 - Separación clara de responsabilidades por capa.
+- `bootstrap.php` con carga explícita en lugar de autoloader dinámico.
 
 ---
 
 ## Cómo Agregar un Nuevo Módulo
 
-### Paso 1 — Crear el Modelo (si accede a datos)
+### Paso 1 — Crear el Modelo
 
 ```php
 // App/Models/ProductModel.php
@@ -500,16 +585,19 @@ class ProductModel {
         $this->db = $dbConnection;
     }
 
-    // Métodos de acceso a datos...
+    // Métodos de acceso a datos con prepared statements...
 }
 ```
 
-### Paso 2 — Crear el Servicio
+### Paso 2 — Crear el Servicio (con Result Pattern)
 
 ```php
 // App/Services/ProductService.php
 <?php
 namespace App\Services;
+
+use App\Models\ProductModel;
+use Core\Result;
 
 class ProductService {
     private ProductModel $productModel;
@@ -518,16 +606,29 @@ class ProductService {
         $this->productModel = $productModel;
     }
 
-    // Lógica de negocio...
+    public function createProduct(string $name, float $price): Result {
+        if (empty(trim($name))) {
+            return Result::failure('El nombre es obligatorio.');
+        }
+        // ... lógica de negocio ...
+        return Result::success(['id' => $newId], 'Producto creado.');
+    }
+
+    public function getAllProducts(): array {
+        return $this->productModel->getAll();
+    }
 }
 ```
 
-### Paso 3 — Crear el Controlador (thin)
+### Paso 3 — Crear el Controlador
 
 ```php
 // App/Controllers/ProductController.php
 <?php
 namespace App\Controllers;
+
+use App\Models\ProductModel;
+use App\Services\ProductService;
 
 class ProductController {
     private ProductService $productService;
@@ -536,30 +637,39 @@ class ProductController {
         $this->productService = new ProductService(new ProductModel($dbConnection));
     }
 
-    public function index(): void {
-        $products = $this->productService->getAll();
-        // Renderizar vista...
+    public function store(): void {
+        header('Content-Type: application/json');
+        $result = $this->productService->createProduct(
+            $_POST['name'] ?? '',
+            floatval($_POST['price'] ?? 0)
+        );
+        echo json_encode($result->toArray());
+        exit;
     }
 }
 ```
 
-### Paso 4 — Registrar Rutas con Middlewares
+### Paso 4 — Registrar en `bootstrap.php`
+
+```php
+// bootstrap.php — agregar después de los modelos existentes
+require_once __DIR__ . '/App/Models/ProductModel.php';
+require_once __DIR__ . '/App/Services/ProductService.php';
+require_once __DIR__ . '/App/Controllers/ProductController.php';
+```
+
+### Paso 5 — Registrar Rutas con Middlewares
 
 ```php
 // routes/web.php
-use Core\Middleware\AuthMiddleware;
-use Core\Middleware\RoleMiddleware;
-
 $router->get('products', 'App\\Controllers\\ProductController', 'index', [
-    AuthMiddleware::class,
+    Core\Middleware\AuthMiddleware::class,
 ]);
 $router->post('products/store', 'App\\Controllers\\ProductController', 'store', [
-    AuthMiddleware::class,
-    RoleMiddleware::class . ':worker', // Solo worker y admin
+    Core\Middleware\AuthMiddleware::class,
+    Core\Middleware\RoleMiddleware::class . ':worker',
 ]);
 ```
-
-> **No es necesario** editar `index.php` ni `autoload.php`. El autoloader PSR-4 carga las clases automáticamente.
 
 ---
 
@@ -572,7 +682,6 @@ $router->post('products/store', 'App\\Controllers\\ProductController', 'store', 
 | PDO            | Capa de acceso a datos (prepared statements) |
 | Tailwind CSS 4 | Framework de utilidades CSS                  |
 | Stripe API     | Pasarela de pagos                            |
-| ExchangeRate-API| API de tipo de cambio en tiempo real        |
 | Apache         | Servidor web con `mod_rewrite`               |
 
 ---

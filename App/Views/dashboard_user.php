@@ -3,6 +3,13 @@ if (!defined('ACCESS_ALLOWED')) {
     header('HTTP/1.1 403 Forbidden');
     exit('Direct access not allowed.');
 }
+
+/** @var string $username */
+/** @var array $hairstyles */
+/** @var array $reservations */
+/** @var string $baseUrl */
+/** @var float $ves_rate */
+
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
 if (!isset($username)) { header('Location: ' . ($baseUrl ?? '/HomeWorks/Design_Project') . '/login'); exit; }
 $baseUrl = $baseUrl ?? '/HomeWorks/Design_Project';
@@ -13,7 +20,7 @@ $baseUrl = $baseUrl ?? '/HomeWorks/Design_Project';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Panel de Cliente | MiMundoTrenzas</title>
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link rel="stylesheet" href="<?php echo $baseUrl; ?>/src/output.css">
     <style>body{font-family:'Plus Jakarta Sans',sans-serif}h1,h2,h3,h4{font-family:'Outfit',sans-serif}</style>
 </head>
 <body class="bg-[#FAF6F0] text-[#5C4333] antialiased min-h-screen selection:bg-[#B56B45]/20">
@@ -52,10 +59,15 @@ $baseUrl = $baseUrl ?? '/HomeWorks/Design_Project';
                     <h3 class="text-2xl font-extrabold tracking-tight">Catálogo de Trenzas</h3>
                     <p class="text-sm text-[#5C4333]/65">Selecciona el diseño de tus sueños para apartarlo</p>
                 </div>
-                <div class="mt-3 sm:mt-0">
+                <div class="mt-3 sm:mt-0 flex items-center gap-2">
                     <span class="inline-flex items-center px-3 py-1.5 bg-white border border-[#EFE5D9] rounded-lg text-xs font-bold text-[#5C4333]">
-                        💵 Precios en USD
+                        Precios en USD
                     </span>
+                    <?php if ($ves_rate > 0): ?>
+                        <span class="inline-flex items-center px-3 py-1.5 bg-emerald-50 border border-emerald-200 rounded-lg text-xs font-bold text-emerald-700">
+                            1 USD = <?php echo number_format($ves_rate, 2); ?> VES
+                        </span>
+                    <?php endif; ?>
                 </div>
             </div>
 
@@ -81,8 +93,11 @@ $baseUrl = $baseUrl ?? '/HomeWorks/Design_Project';
                                     <div class="flex justify-between items-center">
                                         <span class="text-xs uppercase font-bold tracking-widest text-[#5C4333]/40">Precio</span>
                                         <span class="text-xl font-extrabold text-[#B56B45]">$<?php echo number_format($style['price'], 2); ?> USD</span>
+                                        <?php if ($ves_rate > 0): ?>
+                                            <span class="text-xs font-bold text-emerald-600 block text-right"><?php echo number_format($style['price'] * $ves_rate, 2); ?> VES</span>
+                                        <?php endif; ?>
                                     </div>
-                                    <button onclick="apartarPeinado(<?php echo $style['id']; ?>)" class="w-full py-2.5 px-4 bg-[#5C4333] hover:bg-[#B56B45] active:scale-[0.98] text-[#FAF6F0] font-bold rounded-xl text-xs tracking-wider uppercase transition-all shadow-md cursor-pointer">Apartar Peinado</button>
+                                    <button onclick="openScheduleModal(<?php echo $style['id']; ?>, '<?php echo htmlspecialchars($style['name'], ENT_QUOTES); ?>')" class="w-full py-2.5 px-4 bg-[#5C4333] hover:bg-[#B56B45] active:scale-[0.98] text-[#FAF6F0] font-bold rounded-xl text-xs tracking-wider uppercase transition-all shadow-md cursor-pointer">Apartar Peinado</button>
                                 </div>
                             </div>
                         </div>
@@ -108,7 +123,8 @@ $baseUrl = $baseUrl ?? '/HomeWorks/Design_Project';
                             <thead class="bg-[#FAF6F0]/60"><tr>
                                 <th class="px-6 py-4 text-left text-xs font-bold text-[#5C4333]/50 uppercase tracking-widest">Peinado</th>
                                 <th class="px-6 py-4 text-left text-xs font-bold text-[#5C4333]/50 uppercase tracking-widest hidden md:table-cell">Precio</th>
-                                <th class="px-6 py-4 text-left text-xs font-bold text-[#5C4333]/50 uppercase tracking-widest">Fecha</th>
+                                <th class="px-6 py-4 text-left text-xs font-bold text-[#5C4333]/50 uppercase tracking-widest">Cita</th>
+                                <th class="px-6 py-4 text-left text-xs font-bold text-[#5C4333]/50 uppercase tracking-widest">Trabajador</th>
                                 <th class="px-6 py-4 text-left text-xs font-bold text-[#5C4333]/50 uppercase tracking-widest">Estado</th>
                                 <th class="px-6 py-4 text-left text-xs font-bold text-[#5C4333]/50 uppercase tracking-widest">Pago</th>
                             </tr></thead>
@@ -120,12 +136,34 @@ $baseUrl = $baseUrl ?? '/HomeWorks/Design_Project';
                                             <img src="<?php echo htmlspecialchars($res['image_url']); ?>" alt="" class="size-10 rounded-lg object-cover border border-[#EFE5D9]">
                                             <div>
                                                 <div class="text-sm font-extrabold text-[#5C4333]"><?php echo htmlspecialchars($res['hairstyle_name']); ?></div>
-                                                <div class="text-xs text-[#5C4333]/40 md:hidden">$<?php echo number_format($res['price'], 2); ?> USD</div>
+                                                <div class="text-xs text-[#5C4333]/40 md:hidden">
+                                    $<?php echo number_format($res['price'], 2); ?> USD
+                                    <?php if ($ves_rate > 0): ?> · <?php echo number_format($res['price'] * $ves_rate, 2); ?> VES<?php endif; ?>
+                                </div>
                                             </div>
                                         </div>
                                     </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-extrabold text-[#B56B45] hidden md:table-cell">$<?php echo number_format($res['price'], 2); ?> USD</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-[#5C4333]/70 font-medium"><?php echo date('d M, Y', strtotime($res['reserved_at'])); ?></td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-extrabold text-[#B56B45] hidden md:table-cell">
+                                        $<?php echo number_format($res['price'], 2); ?> USD
+                                        <?php if ($ves_rate > 0): ?>
+                                            <br><span class="text-xs font-bold text-emerald-600"><?php echo number_format($res['price'] * $ves_rate, 2); ?> VES</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-[#5C4333]/70 font-medium">
+                                        <?php if (!empty($res['appointment_date'])): ?>
+                                            <?php echo date('d M, Y', strtotime($res['appointment_date'])); ?><br>
+                                            <span class="text-xs"><?php echo date('g:i A', strtotime($res['appointment_time'])); ?></span>
+                                        <?php else: ?>
+                                            <span class="text-xs text-[#5C4333]/40">Pendiente</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-[#5C4333]/70">
+                                        <?php if (!empty($res['worker_name'])): ?>
+                                            <?php echo htmlspecialchars($res['worker_name']); ?>
+                                        <?php else: ?>
+                                            <span class="text-xs text-[#5C4333]/40">—</span>
+                                        <?php endif; ?>
+                                    </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <?php if ($res['status'] === 'pending'): ?>
                                             <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200/50 animate-pulse">Pendiente</span>
@@ -151,6 +189,37 @@ $baseUrl = $baseUrl ?? '/HomeWorks/Design_Project';
             <?php endif; ?>
         </section>
     </main>
+
+    <!-- Modal de Programación de Cita -->
+    <div id="schedule-modal" class="fixed inset-0 bg-stone-950/60 backdrop-blur-sm flex items-center justify-center z-50 opacity-0 pointer-events-none transition-opacity duration-300">
+        <div id="schedule-box" class="bg-white border border-[#EFE5D9] rounded-2xl max-w-lg w-full p-6 shadow-2xl transform scale-95 transition-transform duration-300 mx-4">
+            <h3 class="text-xl font-extrabold text-[#5C4333] mb-2">Agendar Cita</h3>
+            <p class="text-sm text-[#5C4333]/60 mb-6">Selecciona la fecha y hora para tu cita de <strong id="schedule-hairstyle-name"></strong></p>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-[#5C4333]/60 mb-1">Fecha</label>
+                    <input type="date" id="schedule-date" min="<?php echo date('Y-m-d'); ?>"
+                        class="block w-full px-4 py-2.5 bg-[#FAF6F0]/60 border border-[#EFE5D9] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#B56B45] text-sm">
+                </div>
+                <div id="schedule-slots-container" class="hidden">
+                    <label class="block text-xs font-bold uppercase tracking-wider text-[#5C4333]/60 mb-1">Horarios Disponibles</label>
+                    <div id="schedule-slots" class="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-64 overflow-y-auto p-2 bg-[#FAF6F0]/30 rounded-xl">
+                        <p class="text-sm text-[#5C4333]/50 col-span-full text-center py-4">Selecciona una fecha primero.</p>
+                    </div>
+                </div>
+
+                <input type="hidden" id="schedule-hairstyle-id" value="">
+                <input type="hidden" id="schedule-time" value="">
+                <input type="hidden" id="schedule-worker-id" value="">
+
+                <div class="flex gap-2 pt-4 border-t border-[#EFE5D9]">
+                    <button onclick="confirmarReservaConCita()" id="confirm-schedule-btn" class="flex-1 py-2.5 px-4 bg-[#5C4333] hover:bg-[#3D2B1E] text-[#FAF6F0] font-bold rounded-xl text-xs uppercase tracking-wider transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed" disabled>Confirmar Cita</button>
+                    <button onclick="closeScheduleModal()" class="px-4 py-2.5 bg-stone-200 hover:bg-stone-300 text-stone-700 font-bold rounded-xl text-xs uppercase tracking-wider transition-all cursor-pointer">Cancelar</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Modal de Pago -->
     <div id="payment-modal" class="fixed inset-0 bg-stone-950/60 backdrop-blur-sm flex items-center justify-center z-50 opacity-0 pointer-events-none transition-opacity duration-300">

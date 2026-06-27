@@ -2,85 +2,76 @@
 
 namespace App\Controllers;
 
-use App\Models\UserModel;
 use App\Models\HairstyleModel;
 use App\Models\ReservationModel;
 use App\Models\PaymentModel;
+use App\Models\BusinessHoursModel;
+use App\Models\WorkerScheduleModel;
 use App\Services\ReservationService;
 use App\Services\PaymentService;
+use App\Services\ScheduleService;
 
-/**
- * App\Controllers\ClientController
- *
- * Controlador "thin" para las acciones del cliente:
- * visualizar catálogo, realizar reservas y procesar pagos.
- *
- * Principios aplicados:
- *   - SRP: Solo maneja peticiones HTTP del cliente.
- *   - DIP: Depende de servicios inyectados.
- *   - Thin Controller: Solo valida inputs y delega al servicio.
- *
- * @package App\Controllers
- */
 class ClientController
 {
-    /**
-     * @var ReservationService Servicio de reservas.
-     */
     private ReservationService $reservationService;
-
-    /**
-     * @var PaymentService Servicio de pagos.
-     */
     private PaymentService $paymentService;
+    private ScheduleService $scheduleService;
 
-    /**
-     * Constructor con inyección de dependencias.
-     *
-     * @param \PDO $dbConnection Conexión PDO activa.
-     */
     public function __construct(\PDO $dbConnection)
     {
-        $hairstyleModel   = new HairstyleModel($dbConnection);
-        $reservationModel = new ReservationModel($dbConnection);
-        $paymentModel     = new PaymentModel($dbConnection);
+        $hairstyleModel      = new HairstyleModel($dbConnection);
+        $reservationModel    = new ReservationModel($dbConnection);
+        $paymentModel        = new PaymentModel($dbConnection);
+        $businessHoursModel  = new BusinessHoursModel($dbConnection);
+        $workerScheduleModel = new WorkerScheduleModel($dbConnection);
 
         $this->reservationService = new ReservationService($reservationModel, $hairstyleModel);
-        $this->paymentService     = new PaymentService(
-            $paymentModel,
-            $reservationModel,
-            $hairstyleModel
-        );
+        $this->paymentService     = new PaymentService($paymentModel, $reservationModel, $hairstyleModel);
+        $this->scheduleService    = new ScheduleService($businessHoursModel, $workerScheduleModel, $reservationModel, $hairstyleModel);
     }
 
-    /**
-     * Crea una nueva reserva (apartado) para el cliente (POST AJAX).
-     *
-     * @return void
-     */
+    public function getAvailableSlots(): void
+    {
+        header('Content-Type: application/json');
+
+        $date        = $_POST['date']        ?? '';
+        $hairstyleId = intval($_POST['hairstyle_id'] ?? 0);
+        $workerId    = !empty($_POST['worker_id']) ? intval($_POST['worker_id']) : null;
+
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+            echo json_encode(['success' => false, 'message' => 'Formato de fecha inválido.']);
+            exit;
+        }
+        if ($hairstyleId <= 0) {
+            echo json_encode(['success' => false, 'message' => 'Selecciona un peinado válido.']);
+            exit;
+        }
+
+        echo json_encode($this->scheduleService->getAvailableSlots($date, $hairstyleId, $workerId));
+        exit;
+    }
+
     public function reserveHairstyle(): void
     {
         header('Content-Type: application/json');
 
         $userId      = $_SESSION['user_id'] ?? 0;
         $hairstyleId = intval($_POST['hairstyle_id'] ?? 0);
+        $date        = $_POST['appointment_date'] ?? '';
+        $time        = $_POST['appointment_time'] ?? '';
+        $workerId    = !empty($_POST['worker_id']) ? intval($_POST['worker_id']) : null;
 
-        $result = $this->reservationService->createReservation($userId, $hairstyleId);
-        echo json_encode($result);
+        if (empty($date) || empty($time)) {
+            $result = $this->reservationService->createReservation($userId, $hairstyleId);
+            echo json_encode($result->toArray());
+            exit;
+        }
+
+        $result = $this->scheduleService->reserveWithSchedule($userId, $hairstyleId, $date, $time, $workerId);
+        echo json_encode($result->toArray());
         exit;
     }
 
-    /**
-     * Procesa el pago de una reserva (POST AJAX).
-     *
-     * Flujo:
-     *   1. Valida la reserva.
-     *   2. Obtiene el precio en USD.
-     *   3. Procesa el pago a través de la pasarela.
-     *   4. Registra el pago y confirma la reserva.
-     *
-     * @return void
-     */
     public function processPayment(): void
     {
         header('Content-Type: application/json');
@@ -88,16 +79,10 @@ class ClientController
         $reservationId   = intval($_POST['reservation_id'] ?? 0);
         $paymentMethodId = $_POST['payment_method_id'] ?? 'pm_card_visa';
 
-        $result = $this->paymentService->processPayment($reservationId, $paymentMethodId);
-        echo json_encode($result);
+        echo json_encode($this->paymentService->processPayment($reservationId, $paymentMethodId)->toArray());
         exit;
     }
 
-    /**
-     * Obtiene el historial de pagos del cliente (POST AJAX).
-     *
-     * @return void
-     */
     public function getPayments(): void
     {
         header('Content-Type: application/json');

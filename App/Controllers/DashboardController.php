@@ -5,45 +5,16 @@ namespace App\Controllers;
 use App\Models\UserModel;
 use App\Models\HairstyleModel;
 use App\Models\ReservationModel;
-use App\Models\PaymentModel;
+use App\Models\ExchangeRateModel;
 use App\Services\HairstyleService;
 use App\Services\ReservationService;
 
-/**
- * App\Controllers\DashboardController
- *
- * Controlador "thin" que enruta al dashboard correcto según el rol del usuario.
- * No contiene lógica de negocio; solo decide qué vista renderizar.
- *
- * Principios aplicados:
- *   - SRP: Solo maneja el dispatch del dashboard.
- *   - DIP: Depende de servicios (abstracciones), no de modelos directamente.
- *   - Thin Controller: Solo lee la sesión y renderiza la vista apropiada.
- *
- * @package App\Controllers
- */
 class DashboardController
 {
-    /**
-     * @var \PDO Conexión PDO.
-     */
     private \PDO $db;
-
-    /**
-     * @var HairstyleService Servicio de peinados.
-     */
     private HairstyleService $hairstyleService;
-
-    /**
-     * @var ReservationService Servicio de reservas.
-     */
     private ReservationService $reservationService;
 
-    /**
-     * Constructor con inyección de dependencias.
-     *
-     * @param \PDO $dbConnection Conexión PDO activa.
-     */
     public function __construct(\PDO $dbConnection)
     {
         $this->db = $dbConnection;
@@ -54,15 +25,6 @@ class DashboardController
         );
     }
 
-    /**
-     * Muestra el dashboard correspondiente al rol del usuario.
-     *
-     * - admin  → dashboard_admin (con estadísticas de sistema)
-     * - worker → dashboard_worker (CRUD catálogo + reservas)
-     * - client → dashboard_user (catálogo + reservas propias)
-     *
-     * @return void
-     */
     public function index(): void
     {
         $role     = $_SESSION['role'] ?? 'client';
@@ -90,23 +52,20 @@ class DashboardController
                 ]);
                 break;
 
-            default: // client
+            default:
+                $rateModel = new ExchangeRateModel($this->db);
+                $vesRate = $rateModel->getRate('USD', 'VES');
                 $this->render('dashboard_user', [
                     'username'     => $username,
                     'hairstyles'   => $this->hairstyleService->getActiveHairstyles(),
                     'reservations' => $this->reservationService->getUserReservations($userId),
+                    'ves_rate'     => $vesRate ?? 0,
                     'baseUrl'      => $baseUrl,
                 ]);
                 break;
         }
     }
 
-    /**
-     * Destruye la sesión y redirige al login.
-     *
-     * @param bool $timeout Indica si la sesión expiró por inactividad.
-     * @return void
-     */
     public function logout(bool $timeout = false): void
     {
         if (session_status() === PHP_SESSION_ACTIVE) {
@@ -126,13 +85,6 @@ class DashboardController
         exit;
     }
 
-    /**
-     * Renderiza una vista PHP pasándole variables al scope.
-     *
-     * @param string $view Nombre de la vista.
-     * @param array  $data Variables para la vista.
-     * @return void
-     */
     private function render(string $view, array $data = []): void
     {
         extract($data);

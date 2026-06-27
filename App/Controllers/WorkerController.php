@@ -2,120 +2,105 @@
 
 namespace App\Controllers;
 
-use App\Models\UserModel;
 use App\Models\HairstyleModel;
 use App\Models\ReservationModel;
+use App\Models\BusinessHoursModel;
+use App\Models\WorkerScheduleModel;
+use App\Services\HairstyleService;
+use App\Services\ReservationService;
+use App\Services\ScheduleService;
 
-/**
- * App\Controllers\WorkerController
- *
- * Controlador "thin" para las acciones operativas del trabajador:
- * CRUD del catálogo de peinados y gestión del estado de reservas.
- *
- * Principios aplicados:
- *   - SRP: Solo maneja peticiones HTTP de operaciones worker.
- *   - DIP: Depende de HairstyleService y ReservationService.
- *   - Thin Controller: Solo valida inputs y delega al servicio.
- *
- * @package App\Controllers
- */
 class WorkerController
 {
-    /**
-     * @var \App\Services\HairstyleService Servicio de peinados.
-     */
-    private \App\Services\HairstyleService $hairstyleService;
+    private HairstyleService $hairstyleService;
+    private ReservationService $reservationService;
+    private ScheduleService $scheduleService;
 
-    /**
-     * @var \App\Services\ReservationService Servicio de reservas.
-     */
-    private \App\Services\ReservationService $reservationService;
-
-    /**
-     * Constructor con inyección de dependencias.
-     *
-     * @param \PDO $dbConnection Conexión PDO activa.
-     */
     public function __construct(\PDO $dbConnection)
     {
-        $this->hairstyleService = new \App\Services\HairstyleService(new HairstyleModel($dbConnection));
-        $this->reservationService = new \App\Services\ReservationService(
-            new ReservationModel($dbConnection),
-            new HairstyleModel($dbConnection)
-        );
+        $hairstyleModel      = new HairstyleModel($dbConnection);
+        $reservationModel    = new ReservationModel($dbConnection);
+        $businessHoursModel  = new BusinessHoursModel($dbConnection);
+        $workerScheduleModel = new WorkerScheduleModel($dbConnection);
+
+        $this->hairstyleService   = new HairstyleService($hairstyleModel);
+        $this->reservationService = new ReservationService($reservationModel, $hairstyleModel);
+        $this->scheduleService    = new ScheduleService($businessHoursModel, $workerScheduleModel, $reservationModel, $hairstyleModel);
     }
 
-    /**
-     * Crea un nuevo peinado en el catálogo (POST AJAX).
-     *
-     * @return void
-     */
     public function storeHairstyle(): void
     {
         header('Content-Type: application/json');
-
-        $name        = $_POST['name']        ?? '';
-        $description = $_POST['description'] ?? '';
-        $price       = floatval($_POST['price'] ?? 0.0);
-        $imageUrl    = $_POST['image_url']    ?? '';
-        $status      = $_POST['status']       ?? 'active';
-
-        $result = $this->hairstyleService->createHairstyle($name, $description, $price, $imageUrl, $status);
-        echo json_encode($result);
+        $name            = $_POST['name']            ?? '';
+        $description     = $_POST['description']     ?? '';
+        $price           = floatval($_POST['price'] ?? 0.0);
+        $imageUrl        = $_POST['image_url']        ?? '';
+        $status          = $_POST['status']           ?? 'active';
+        $durationMinutes = intval($_POST['duration_minutes'] ?? 60);
+        echo json_encode($this->hairstyleService->createHairstyle($name, $description, $price, $imageUrl, $status, $durationMinutes)->toArray());
         exit;
     }
 
-    /**
-     * Actualiza un peinado existente en el catálogo (POST AJAX).
-     *
-     * @return void
-     */
     public function updateHairstyle(): void
     {
         header('Content-Type: application/json');
-
-        $id          = intval($_POST['id'] ?? 0);
-        $name        = $_POST['name']        ?? '';
-        $description = $_POST['description'] ?? '';
-        $price       = floatval($_POST['price'] ?? 0.0);
-        $imageUrl    = $_POST['image_url']    ?? '';
-        $status      = $_POST['status']       ?? 'active';
-
-        $result = $this->hairstyleService->updateHairstyle($id, $name, $description, $price, $imageUrl, $status);
-        echo json_encode($result);
+        $id              = intval($_POST['id'] ?? 0);
+        $name            = $_POST['name']            ?? '';
+        $description     = $_POST['description']     ?? '';
+        $price           = floatval($_POST['price'] ?? 0.0);
+        $imageUrl        = $_POST['image_url']        ?? '';
+        $status          = $_POST['status']           ?? 'active';
+        $durationMinutes = intval($_POST['duration_minutes'] ?? 60);
+        echo json_encode($this->hairstyleService->updateHairstyle($id, $name, $description, $price, $imageUrl, $status, $durationMinutes)->toArray());
         exit;
     }
 
-    /**
-     * Elimina un peinado del catálogo (POST AJAX).
-     *
-     * @return void
-     */
     public function deleteHairstyle(): void
     {
         header('Content-Type: application/json');
-
         $id = intval($_POST['id'] ?? 0);
-
-        $result = $this->hairstyleService->deleteHairstyle($id);
-        echo json_encode($result);
+        echo json_encode($this->hairstyleService->deleteHairstyle($id)->toArray());
         exit;
     }
 
-    /**
-     * Actualiza el estado de una reserva (POST AJAX).
-     *
-     * @return void
-     */
     public function updateReservation(): void
     {
         header('Content-Type: application/json');
-
         $id     = intval($_POST['id'] ?? 0);
         $status = $_POST['status'] ?? '';
+        echo json_encode($this->reservationService->updateReservationStatus($id, $status)->toArray());
+        exit;
+    }
 
-        $result = $this->reservationService->updateReservationStatus($id, $status);
-        echo json_encode($result);
+    public function getMySchedule(): void
+    {
+        header('Content-Type: application/json');
+        $workerId = $_SESSION['user_id'] ?? 0;
+        echo json_encode(['success' => true, 'schedule' => $this->scheduleService->getWorkerSchedule($workerId)]);
+        exit;
+    }
+
+    public function updateMySchedule(): void
+    {
+        header('Content-Type: application/json');
+
+        $workerId = $_SESSION['user_id'] ?? 0;
+
+        $raw = $_POST['schedule'] ?? '';
+        $scheduleData = [];
+        if (!empty($raw) && is_string($raw)) {
+            $decoded = json_decode($raw, true);
+            if (is_array($decoded)) {
+                $scheduleData = $decoded;
+            }
+        }
+
+        if (empty($scheduleData)) {
+            echo json_encode(['success' => false, 'message' => 'No se recibieron datos de horario.']);
+            exit;
+        }
+
+        echo json_encode($this->scheduleService->updateWorkerSchedule($workerId, $scheduleData)->toArray());
         exit;
     }
 }

@@ -12,7 +12,7 @@ $baseUrl = $baseUrl ?? '/HomeWorks/Design_Project';
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Iniciar Sesión | MiMundoTrenzas</title>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link rel="stylesheet" href="<?php echo $baseUrl; ?>/src/output.css">
     <style>
         body { font-family: 'Plus Jakarta Sans', sans-serif; }
         h1, h2, h3, h4 { font-family: 'Outfit', sans-serif; }

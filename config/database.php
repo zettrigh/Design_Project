@@ -46,12 +46,13 @@ class Database
         }
 
         $host    = Environment::get('DB_HOST', 'localhost');
+        $port    = Environment::get('DB_PORT', '3306');
         $db      = Environment::get('DB_NAME', 'auth_system_db');
         $user    = Environment::get('DB_USER', 'root');
         $pass    = (string) Environment::get('DB_PASS', '');
         $charset = Environment::get('DB_CHARSET', 'utf8mb4');
 
-        $dsn = "mysql:host={$host};charset={$charset}";
+        $dsn = "mysql:host={$host};port={$port};charset={$charset}";
 
         $options = [
             \PDO::ATTR_ERRMODE            => \PDO::ERRMODE_EXCEPTION,
@@ -77,6 +78,42 @@ class Database
             $this->seedData();
 
         } catch (\PDOException $e) {
+            // Si es error de tablespace corrupto (1813, 1932),
+            // dropear tablas corruptas una por una y reintentar
+            $msg = $e->getMessage();
+            if (str_contains($msg, '1813') || str_contains($msg, '1932') || str_contains($msg, 'doesn\'t exist in engine')) {
+                try {
+                    // Extraer nombre de tabla del mensaje de error
+                    preg_match('/table\s+[\'`]?(?:\w+\.)?(\w+)[\'`]?/i', $msg, $m);
+                    $corruptedTable = $m[1] ?? '';
+                    if ($corruptedTable) {
+                        try {
+                            $this->connection->exec("SET FOREIGN_KEY_CHECKS = 0");
+                            $this->connection->exec("DROP TABLE IF EXISTS `{$corruptedTable}`");
+                            $this->connection->exec("SET FOREIGN_KEY_CHECKS = 1");
+                        } catch (\PDOException $eDrop) {
+                            // Si no se puede dropear, intentar con todos los métodos
+                            $this->connection->exec("SET FOREIGN_KEY_CHECKS = 0");
+                            foreach (['users', 'hairstyles', 'reservations', 'business_hours', 'worker_schedules', 'payments'] as $tbl) {
+                                try { $this->connection->exec("DROP TABLE IF EXISTS `{$tbl}`"); } catch (\PDOException $eInner) {}
+                            }
+                            $this->connection->exec("SET FOREIGN_KEY_CHECKS = 1");
+                        }
+                    } else {
+                        // No se pudo extraer nombre: dropear todas
+                        $this->connection->exec("SET FOREIGN_KEY_CHECKS = 0");
+                        foreach (['users', 'hairstyles', 'reservations', 'business_hours', 'worker_schedules', 'payments'] as $tbl) {
+                            try { $this->connection->exec("DROP TABLE IF EXISTS `{$tbl}`"); } catch (\PDOException $eInner) {}
+                        }
+                        $this->connection->exec("SET FOREIGN_KEY_CHECKS = 1");
+                    }
+                    $this->migrateSchema();
+                    $this->seedData();
+                    return;
+                } catch (\PDOException $e2) {
+                    error_log('Database Recovery Error: ' . $e2->getMessage());
+                }
+            }
             error_log('Database Connection Error: ' . $e->getMessage());
             die('Error crítico: No se pudo conectar a la base de datos.');
         }
@@ -90,8 +127,28 @@ class Database
      */
     private function migrateSchema(): void
     {
+        // Helper: crear tabla con detección de corrupción (errores 1813, 1932)
+        $createTable = function (string $sql): void {
+            // Extraer el nombre de la tabla del CREATE TABLE
+            preg_match('/CREATE TABLE (?:IF NOT EXISTS )?(\w+)/i', $sql, $m);
+            $tableName = $m[1] ?? '';
+            try {
+                $this->connection->exec($sql);
+            } catch (\PDOException $e) {
+                $msg = $e->getMessage();
+                if ($tableName && (str_contains($msg, 'doesn\'t exist in engine') || str_contains($msg, '1813'))) {
+                    try { $this->connection->exec("SET FOREIGN_KEY_CHECKS = 0"); } catch (\PDOException $eInner) {}
+                    $this->connection->exec("DROP TABLE IF EXISTS `{$tableName}`");
+                    try { $this->connection->exec("SET FOREIGN_KEY_CHECKS = 1"); } catch (\PDOException $eInner) {}
+                    $this->connection->exec($sql);
+                } else {
+                    throw $e;
+                }
+            }
+        };
+
         // Tabla users
-        $this->connection->exec("
+        $createTable("
             CREATE TABLE IF NOT EXISTS users (
                 id         INT AUTO_INCREMENT PRIMARY KEY,
                 username   VARCHAR(50)  NOT NULL UNIQUE,
@@ -103,20 +160,23 @@ class Database
         ");
 
         // Si la columna role es VARCHAR antiguo, migrarla a ENUM
-        $result = $this->connection->query("SHOW COLUMNS FROM users LIKE 'role'");
-        if ($result->rowCount() > 0) {
-            $column = $result->fetch();
-            if ($column && str_contains($column['Type'], 'varchar')) {
-                try {
+        try {
+            $result = $this->connection->query("SHOW COLUMNS FROM users LIKE 'role'");
+            if ($result->rowCount() > 0) {
+                $column = $result->fetch();
+                if ($column && str_contains($column['Type'], 'varchar')) {
                     $this->connection->exec("ALTER TABLE users MODIFY COLUMN role ENUM('admin', 'worker', 'client') NOT NULL DEFAULT 'client'");
-                } catch (\PDOException $e) {
-                    // Ignorar si ya es ENUM
                 }
+            }
+        } catch (\PDOException $e) {
+            if (str_contains($e->getMessage(), 'doesn\'t exist in engine')) {
+                $this->connection->exec("DROP TABLE IF EXISTS users");
+                return; // Recreará todo en la próxima solicitud
             }
         }
 
         // Tabla hairstyles
-        $this->connection->exec("
+        $createTable("
             CREATE TABLE IF NOT EXISTS hairstyles (
                 id          INT AUTO_INCREMENT PRIMARY KEY,
                 name        VARCHAR(100) NOT NULL,
@@ -128,8 +188,8 @@ class Database
             )
         ");
 
-        // Tabla reservations
-        $this->connection->exec("
+        // Tabla reservations base (sin columnas nuevas primero para compatibilidad)
+        $createTable("
             CREATE TABLE IF NOT EXISTS reservations (
                 id           INT AUTO_INCREMENT PRIMARY KEY,
                 user_id      INT NOT NULL,
@@ -141,8 +201,88 @@ class Database
             )
         ");
 
+        // Migrar reservations: agregar columnas de agenda solo si no existen
+        $columns = $this->connection->query("SHOW COLUMNS FROM reservations");
+        $existingCols = [];
+        while ($col = $columns->fetch()) {
+            $existingCols[] = $col['Field'];
+        }
+
+        if (!in_array('worker_id', $existingCols)) {
+            try {
+                $this->connection->exec("ALTER TABLE reservations ADD COLUMN worker_id INT DEFAULT NULL AFTER hairstyle_id");
+                $this->connection->exec("ALTER TABLE reservations ADD FOREIGN KEY (worker_id) REFERENCES users(id) ON DELETE SET NULL");
+            } catch (\PDOException $e) {}
+        }
+        if (!in_array('appointment_date', $existingCols)) {
+            try {
+                $this->connection->exec("ALTER TABLE reservations ADD COLUMN appointment_date DATE DEFAULT NULL AFTER worker_id");
+            } catch (\PDOException $e) {}
+        }
+        if (!in_array('appointment_time', $existingCols)) {
+            try {
+                $this->connection->exec("ALTER TABLE reservations ADD COLUMN appointment_time TIME DEFAULT NULL AFTER appointment_date");
+            } catch (\PDOException $e) {}
+        }
+        if (!in_array('end_time', $existingCols)) {
+            try {
+                $this->connection->exec("ALTER TABLE reservations ADD COLUMN end_time TIME DEFAULT NULL AFTER appointment_time");
+            } catch (\PDOException $e) {}
+        }
+
+        // Migrar hairstyles: agregar duration_minutes si no existe
+        $hColumns = $this->connection->query("SHOW COLUMNS FROM hairstyles");
+        $hExistingCols = [];
+        while ($col = $hColumns->fetch()) {
+            $hExistingCols[] = $col['Field'];
+        }
+        if (!in_array('duration_minutes', $hExistingCols)) {
+            try {
+                $this->connection->exec("ALTER TABLE hairstyles ADD COLUMN duration_minutes INT NOT NULL DEFAULT 60 AFTER price");
+            } catch (\PDOException $e) {}
+        }
+
+        // Tabla business_hours (horarios de atención del negocio)
+        $createTable("
+            CREATE TABLE IF NOT EXISTS business_hours (
+                id          INT AUTO_INCREMENT PRIMARY KEY,
+                day_of_week TINYINT NOT NULL,
+                open_time   TIME NOT NULL,
+                close_time  TIME NOT NULL,
+                is_active   TINYINT(1) NOT NULL DEFAULT 1,
+                UNIQUE KEY uq_day (day_of_week)
+            )
+        ");
+
+        // Tabla worker_schedules (disponibilidad individual de cada trabajador)
+        $createTable("
+            CREATE TABLE IF NOT EXISTS worker_schedules (
+                id          INT AUTO_INCREMENT PRIMARY KEY,
+                worker_id   INT NOT NULL,
+                day_of_week TINYINT NOT NULL,
+                start_time  TIME NOT NULL,
+                end_time    TIME NOT NULL,
+                is_active   TINYINT(1) NOT NULL DEFAULT 1,
+                FOREIGN KEY (worker_id) REFERENCES users(id) ON DELETE CASCADE,
+                UNIQUE KEY uq_worker_day (worker_id, day_of_week)
+            )
+        ");
+
+        // Tabla exchange_rates (tasa de cambio manual USD → VES)
+        $createTable("
+            CREATE TABLE IF NOT EXISTS exchange_rates (
+                id            INT AUTO_INCREMENT PRIMARY KEY,
+                from_currency VARCHAR(3) NOT NULL DEFAULT 'USD',
+                to_currency   VARCHAR(3) NOT NULL DEFAULT 'VES',
+                rate          DECIMAL(12,4) NOT NULL DEFAULT 0.0000,
+                updated_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                updated_by    INT DEFAULT NULL,
+                UNIQUE KEY uq_pair (from_currency, to_currency)
+            )
+        ");
+
         // Tabla payments (nueva)
-        $this->connection->exec("
+        $createTable("
             CREATE TABLE IF NOT EXISTS payments (
                 id              INT AUTO_INCREMENT PRIMARY KEY,
                 reservation_id  INT NOT NULL,
@@ -235,6 +375,31 @@ class Database
                     ':price'       => $style['price'],
                     ':image_url'   => $style['image_url'],
                     ':status'      => $style['status'],
+                ]);
+            }
+        }
+
+        // Sembrar horarios de atención por defecto (Lun-Sáb 9:00-18:00)
+        $stmt = $this->connection->query("SELECT id FROM business_hours LIMIT 1");
+        if ($stmt->rowCount() === 0) {
+            $insertHours = $this->connection->prepare("
+                INSERT INTO business_hours (day_of_week, open_time, close_time, is_active)
+                VALUES (:day_of_week, :open_time, :close_time, 1)
+            ");
+            // Lunes(1) a Viernes(5): 9:00-18:00, Sábado(6): 9:00-14:00, Domingo(0): inactivo
+            $days = [
+                1 => ['09:00', '18:00'],
+                2 => ['09:00', '18:00'],
+                3 => ['09:00', '18:00'],
+                4 => ['09:00', '18:00'],
+                5 => ['09:00', '18:00'],
+                6 => ['09:00', '14:00'],
+            ];
+            foreach ($days as $day => $hours) {
+                $insertHours->execute([
+                    ':day_of_week' => $day,
+                    ':open_time'   => $hours[0],
+                    ':close_time'  => $hours[1],
                 ]);
             }
         }
