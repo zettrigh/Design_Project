@@ -7,6 +7,7 @@ require_once __DIR__ . '/bootstrap.php';
 use Config\Database;
 use Config\Environment;
 use Core\Middleware\SecurityHeadersMiddleware;
+use Core\Router;
 
 Environment::load(__DIR__ . '/.env');
 
