@@ -76,16 +76,6 @@ class WorkerScheduleModel
         return $stmt->fetchAll();
     }
 
-    public function getScheduleByWorker(int $workerId): array
-    {
-        return $this->getByWorker($workerId);
-    }
-
-    public function upsertSchedule(int $workerId, int $dayOfWeek, string $startTime, string $endTime, bool $isActive): bool
-    {
-        return $this->upsert($workerId, $dayOfWeek, $startTime, $endTime, $isActive);
-    }
-
     public function getActiveScheduleByWorkerAndDay(int $workerId, int $dayOfWeek): array|false
     {
         $stmt = $this->db->prepare(

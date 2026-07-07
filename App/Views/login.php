@@ -36,6 +36,7 @@ $baseUrl = $baseUrl ?? '/HomeWorks/Design_Project';
 
                 <!-- Formulario AJAX -->
                 <form id="login-form" class="space-y-5">
+                    <input type="hidden" name="_csrf_token" value="<?php echo csrf_token(); ?>">
                     <div>
                         <label for="email" class="block text-xs font-bold uppercase tracking-wider text-[#5C4333]/80 mb-2">Correo Electrónico</label>
                         <input type="email" id="email" name="email" placeholder="correo@ejemplo.com"

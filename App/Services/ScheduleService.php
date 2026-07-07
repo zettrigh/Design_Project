@@ -38,16 +38,6 @@ class ScheduleService
         $this->hairstyleModel = $hairstyleModel;
     }
 
-    public function getDayName(int $dayOfWeek): string
-    {
-        return self::DAY_NAMES[$dayOfWeek] ?? 'Desconocido';
-    }
-
-    public function getAllDayNames(): array
-    {
-        return self::DAY_NAMES;
-    }
-
     // ── Horarios de atención ──
 
     public function getBusinessHours(): array
@@ -293,32 +283,6 @@ class ScheduleService
             ['reservation_id' => $reservationId],
             '¡Cita agendada con éxito! Recibirás la confirmación pronto.'
         );
-    }
-
-    public function updateReservationSchedule(int $reservationId, string $date, string $time, ?int $workerId): Result
-    {
-        $reservation = $this->reservationModel->getReservationById($reservationId);
-        if (!$reservation) {
-            return Result::failure('Reserva no encontrada.');
-        }
-
-        $hairstyle = $this->hairstyleModel->getHairstyleById((int)$reservation['hairstyle_id']);
-        if (!$hairstyle) {
-            return Result::failure('Peinado no encontrado.');
-        }
-
-        $duration = (int) ($hairstyle['duration_minutes'] ?? 60);
-        $startTime = date('H:i:s', strtotime($time));
-        $endTime = date('H:i:s', strtotime($time) + ($duration * 60));
-
-        if ($this->reservationModel->hasTimeConflict($date, $startTime, $endTime, $workerId, $reservationId)) {
-            return Result::failure('El nuevo horario elegido ya está ocupado.');
-        }
-
-        $updated = $this->reservationModel->updateReservationSchedule($reservationId, (int)$workerId, $date, $startTime, $endTime);
-        return $updated
-            ? Result::success(null, 'Cita reprogramada correctamente.')
-            : Result::failure('Error al reprogramar la cita.');
     }
 
     public function getScheduleOverview(string $date): array

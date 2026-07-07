@@ -75,6 +75,7 @@ function eliminarPeinado(id) {
     showModal('¿Estás seguro?', 'Esta acción eliminará el peinado permanentemente.', false, async () => {
         try {
             const formData = new URLSearchParams();
+            formData.append('_csrf_token', window.CSRF_TOKEN || '');
             formData.append('id', id);
             const response = await fetch(BASE_URL + '/worker/hairstyles/delete', {
                 method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: formData
@@ -89,6 +90,7 @@ function eliminarPeinado(id) {
 async function cambiarEstadoReserva(id, status) {
     try {
         const formData = new URLSearchParams();
+        formData.append('_csrf_token', window.CSRF_TOKEN || '');
         formData.append('id', id);
         formData.append('status', status);
         const response = await fetch(BASE_URL + '/worker/reservations/update', {
@@ -107,7 +109,11 @@ async function loadWorkerSchedule() {
     const container = document.getElementById('worker-schedule-form');
     container.innerHTML = '<p class="text-sm text-[#5C4333]/50 text-center py-4">Cargando tu disponibilidad...</p>';
     try {
-        const response = await fetch(BASE_URL + '/worker/schedule/get', { method: 'POST' });
+        const response = await fetch(BASE_URL + '/worker/schedule/get', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: '_csrf_token=' + encodeURIComponent(window.CSRF_TOKEN || '')
+        });
         const data = await response.json();
         if (!data.success) {
             container.innerHTML = '<p class="text-sm text-red-500 text-center py-4">Error al cargar disponibilidad.</p>';
@@ -179,6 +185,7 @@ async function saveWorkerSchedule() {
 
     try {
         const formData = new URLSearchParams();
+        formData.append('_csrf_token', window.CSRF_TOKEN || '');
         formData.append('schedule', JSON.stringify(scheduleData));
 
         const response = await fetch(BASE_URL + '/worker/schedule/update', {

@@ -98,7 +98,10 @@ class ExchangeRateService
 
     private function fetchFromApi(string $from, string $to): ?float
     {
-        $ctx = stream_context_create(['http' => ['timeout' => 5]]);
+        $ctx = stream_context_create([
+            'http' => ['timeout' => 5],
+            'ssl'  => ['verify_peer' => true, 'verify_peer_name' => true],
+        ]);
         $response = @file_get_contents(self::API_URL, false, $ctx);
         if ($response === false) {
             return null;

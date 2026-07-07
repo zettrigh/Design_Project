@@ -36,6 +36,14 @@ document.addEventListener('DOMContentLoaded', () => {
     if (dateInput) {
         dateInput.addEventListener('change', loadAvailableSlots);
     }
+    const slotsContainer = document.getElementById('schedule-slots');
+    if (slotsContainer) {
+        slotsContainer.addEventListener('click', function(e) {
+            const btn = e.target.closest('.slot-btn');
+            if (!btn) return;
+            selectSlot(btn.dataset.time, btn.dataset.end, btn.dataset.worker, btn);
+        });
+    }
 });
 
 async function loadAvailableSlots() {
@@ -52,6 +60,7 @@ async function loadAvailableSlots() {
 
     try {
         const formData = new URLSearchParams();
+        formData.append('_csrf_token', window.CSRF_TOKEN || '');
         formData.append('date', date);
         formData.append('hairstyle_id', hairstyleId);
 
@@ -75,14 +84,15 @@ async function loadAvailableSlots() {
         let html = '';
         data.slots_by_worker.forEach(worker => {
             if (worker.slots && worker.slots.length > 0) {
+                worker.slots.sort((a, b) => (a.time || '').toString().localeCompare((b.time || '').toString()));
                 html += `<div class="col-span-full">
                     <p class="text-xs font-bold text-[#5C4333]/60 uppercase tracking-wider mb-2">
                         ${worker.worker_name ? 'Con: ' + worker.worker_name : 'Sin asignar'}
                     </p>
                     <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">`;
                 worker.slots.forEach(slot => {
-                    const workerId = worker.worker_id || '';
-                    html += `<button type="button" onclick="selectSlot('${slot.time}', '${slot.end_time}', ${workerId}, this)"
+                    html += `<button type="button"
+                        data-time="${slot.time}" data-end="${slot.end_time}" data-worker="${worker.worker_id || ''}"
                         class="slot-btn px-3 py-2 text-xs font-bold border border-[#EFE5D9] rounded-xl hover:border-[#B56B45] hover:bg-[#B56B45]/5 transition-all text-center cursor-pointer">
                         ${slot.display}
                     </button>`;
@@ -131,6 +141,7 @@ async function confirmarReservaConCita() {
 
     try {
         const formData = new URLSearchParams();
+        formData.append('_csrf_token', window.CSRF_TOKEN || '');
         formData.append('hairstyle_id', hairstyleId);
         formData.append('appointment_date', date);
         formData.append('appointment_time', time);
@@ -163,6 +174,7 @@ async function confirmarReservaConCita() {
 async function apartarPeinado(id) {
     try {
         const formData = new URLSearchParams();
+        formData.append('_csrf_token', window.CSRF_TOKEN || '');
         formData.append('hairstyle_id', id);
 
         const response = await fetch(BASE_URL + '/client/reserve', {
@@ -220,6 +232,7 @@ async function confirmarPago() {
 
     try {
         const formData = new URLSearchParams();
+        formData.append('_csrf_token', window.CSRF_TOKEN || '');
         formData.append('reservation_id', currentPaymentReservationId);
         formData.append('payment_method_id', 'pm_card_visa');
 

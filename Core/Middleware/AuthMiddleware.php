@@ -2,6 +2,7 @@
 
 namespace Core\Middleware;
 
+use Config\Environment;
 use Core\MiddlewareInterface;
 
 /**

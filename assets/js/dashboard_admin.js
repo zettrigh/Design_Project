@@ -78,6 +78,7 @@ function eliminarPeinado(id) {
     showModal('¿Estás seguro?', 'Esta acción eliminará el peinado permanentemente.', false, async () => {
         try {
             const formData = new URLSearchParams();
+            formData.append('_csrf_token', window.CSRF_TOKEN || '');
             formData.append('id', id);
             const response = await fetch(BASE_URL + '/admin/hairstyles/delete', {
                 method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: formData
@@ -92,6 +93,7 @@ function eliminarPeinado(id) {
 async function cambiarEstadoReserva(id, status) {
     try {
         const formData = new URLSearchParams();
+        formData.append('_csrf_token', window.CSRF_TOKEN || '');
         formData.append('id', id);
         formData.append('status', status);
         const response = await fetch(BASE_URL + '/admin/reservations/update', {
@@ -124,7 +126,11 @@ function cancelWorkerEdit() {
 
 async function loadWorkers() {
     try {
-        const response = await fetch(BASE_URL + '/admin/workers/list', { method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+        const response = await fetch(BASE_URL + '/admin/workers/list', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
+            body: '_csrf_token=' + encodeURIComponent(window.CSRF_TOKEN || '')
+        });
         const data = await response.json();
         const list = document.getElementById('workers-list');
 
@@ -172,6 +178,7 @@ function deleteWorker(id) {
     showModal('¿Eliminar trabajador?', 'Esta acción es irreversible.', false, async () => {
         try {
             const formData = new URLSearchParams();
+            formData.append('_csrf_token', window.CSRF_TOKEN || '');
             formData.append('id', id);
             const response = await fetch(BASE_URL + '/admin/workers/delete', {
                 method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: formData
@@ -192,6 +199,7 @@ document.getElementById('worker-form').addEventListener('submit', async (e) => {
 
     try {
         const formData = new URLSearchParams();
+        formData.append('_csrf_token', window.CSRF_TOKEN || '');
         formData.append('id', id);
         formData.append('username', document.getElementById('worker-username').value);
         formData.append('email', document.getElementById('worker-email').value);
@@ -293,6 +301,7 @@ async function saveBusinessHours() {
 
     try {
         const formData = new URLSearchParams();
+        formData.append('_csrf_token', window.CSRF_TOKEN || '');
         formData.append('hours', JSON.stringify(hoursData));
 
         const response = await fetch(BASE_URL + '/admin/business-hours/update', {
@@ -322,6 +331,7 @@ async function loadScheduleOverview() {
 
     try {
         const formData = new URLSearchParams();
+        formData.append('_csrf_token', window.CSRF_TOKEN || '');
         formData.append('date', date);
 
         const response = await fetch(BASE_URL + '/admin/schedule/overview', {
@@ -411,6 +421,7 @@ async function guardarTasaCambio() {
     btn.textContent = 'Guardando...';
 
     const formData = new URLSearchParams();
+    formData.append('_csrf_token', window.CSRF_TOKEN || '');
     formData.append('rate', rate.toString());
 
     try {

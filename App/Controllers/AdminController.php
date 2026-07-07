@@ -2,44 +2,18 @@
 
 namespace App\Controllers;
 
-use App\Models\UserModel;
-use App\Models\HairstyleModel;
-use App\Models\ReservationModel;
-use App\Models\PaymentModel;
-use App\Models\BusinessHoursModel;
-use App\Models\WorkerScheduleModel;
 use App\Models\ExchangeRateModel;
-use App\Services\UserService;
-use App\Services\HairstyleService;
-use App\Services\ReservationService;
-use App\Services\PaymentService;
-use App\Services\ScheduleService;
 use App\Services\ExchangeRateService;
 
-class AdminController
+class AdminController extends WorkerController
 {
-    private UserService $userService;
-    private HairstyleService $hairstyleService;
-    private ReservationService $reservationService;
-    private PaymentService $paymentService;
-    private ScheduleService $scheduleService;
     private ExchangeRateService $exchangeRateService;
 
     public function __construct(\PDO $dbConnection)
     {
-        $userModel           = new UserModel($dbConnection);
-        $hairstyleModel      = new HairstyleModel($dbConnection);
-        $reservationModel    = new ReservationModel($dbConnection);
-        $paymentModel        = new PaymentModel($dbConnection);
-        $businessHoursModel  = new BusinessHoursModel($dbConnection);
-        $workerScheduleModel = new WorkerScheduleModel($dbConnection);
-        $exchangeRateModel   = new ExchangeRateModel($dbConnection);
+        parent::__construct($dbConnection);
 
-        $this->userService        = new UserService($userModel);
-        $this->hairstyleService   = new HairstyleService($hairstyleModel);
-        $this->reservationService = new ReservationService($reservationModel, $hairstyleModel);
-        $this->paymentService     = new PaymentService($paymentModel, $reservationModel, $hairstyleModel);
-        $this->scheduleService    = new ScheduleService($businessHoursModel, $workerScheduleModel, $reservationModel, $hairstyleModel);
+        $exchangeRateModel = new ExchangeRateModel($dbConnection);
         $this->exchangeRateService = new ExchangeRateService();
         $this->exchangeRateService->setRateModel($exchangeRateModel);
     }
@@ -87,52 +61,6 @@ class AdminController
         $id          = intval($_POST['id'] ?? 0);
         $newPassword = $_POST['new_password'] ?? '';
         echo json_encode($this->userService->resetWorkerPassword($id, $newPassword)->toArray());
-        exit;
-    }
-
-    // ── CRUD Peinados ──
-
-    public function storeHairstyle(): void
-    {
-        header('Content-Type: application/json');
-        $name            = $_POST['name']            ?? '';
-        $description     = $_POST['description']     ?? '';
-        $price           = floatval($_POST['price'] ?? 0.0);
-        $imageUrl        = $_POST['image_url']        ?? '';
-        $status          = $_POST['status']           ?? 'active';
-        $durationMinutes = intval($_POST['duration_minutes'] ?? 60);
-        echo json_encode($this->hairstyleService->createHairstyle($name, $description, $price, $imageUrl, $status, $durationMinutes)->toArray());
-        exit;
-    }
-
-    public function updateHairstyle(): void
-    {
-        header('Content-Type: application/json');
-        $id              = intval($_POST['id'] ?? 0);
-        $name            = $_POST['name']            ?? '';
-        $description     = $_POST['description']     ?? '';
-        $price           = floatval($_POST['price'] ?? 0.0);
-        $imageUrl        = $_POST['image_url']        ?? '';
-        $status          = $_POST['status']           ?? 'active';
-        $durationMinutes = intval($_POST['duration_minutes'] ?? 60);
-        echo json_encode($this->hairstyleService->updateHairstyle($id, $name, $description, $price, $imageUrl, $status, $durationMinutes)->toArray());
-        exit;
-    }
-
-    public function deleteHairstyle(): void
-    {
-        header('Content-Type: application/json');
-        $id = intval($_POST['id'] ?? 0);
-        echo json_encode($this->hairstyleService->deleteHairstyle($id)->toArray());
-        exit;
-    }
-
-    public function updateReservation(): void
-    {
-        header('Content-Type: application/json');
-        $id     = intval($_POST['id'] ?? 0);
-        $status = $_POST['status'] ?? '';
-        echo json_encode($this->reservationService->updateReservationStatus($id, $status)->toArray());
         exit;
     }
 

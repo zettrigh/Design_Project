@@ -79,7 +79,8 @@ class ClientController
         $reservationId   = intval($_POST['reservation_id'] ?? 0);
         $paymentMethodId = $_POST['payment_method_id'] ?? 'pm_card_visa';
 
-        echo json_encode($this->paymentService->processPayment($reservationId, $paymentMethodId)->toArray());
+        $userId = $_SESSION['user_id'] ?? 0;
+        echo json_encode($this->paymentService->processPayment($reservationId, $userId, $paymentMethodId)->toArray());
         exit;
     }
 

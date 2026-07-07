@@ -526,18 +526,69 @@ Las migraciones se ejecutan automáticamente en `config/database.php` al iniciar
 
 ## Seguridad
 
+### Protecciones Implementadas (OWASP Top 10)
+
 | Medida                         | Implementación                                           | Ubicación              |
 |-------------------------------|---------------------------------------------------------|------------------------|
-| **Anti-SQL Injection**        | Prepared statements con bindParam() tipado               | Todos los Models       |
-| **Anti-XSS**                  | `htmlspecialchars()` en toda salida dinámica             | Controladores + Vistas |
-| **Hash de contraseñas**       | `password_hash()` con `PASSWORD_DEFAULT` (bcrypt)       | AuthService            |
-| **Verificación de password**  | `password_verify()` (comparación segura contra timing)  | AuthService            |
-| **Anti-Session Fixation**     | `session_regenerate_id(true)` al autenticarse           | AuthService            |
-| **Timeout de sesión**         | Expiración automática después de 30 minutos             | AuthMiddleware         |
-| **Protección de rutas**       | Middlewares de autenticación y autorización por rol      | Router + Middlewares   |
+| **Anti-CSRF**                 | Token de 32 bytes (random_bytes) en sesión; validación obligatoria en todos los POST; header o body field `_csrf_token` | `bootstrap.php` (helpers), `index.php` (validación), todas las vistas + JS |
+| **Anti-SQL Injection**        | Prepared statements con bindParam() tipado en todos los queries | Todos los Models       |
+| **Anti-XSS**                  | `htmlspecialchars()` (helper global `h()`) en toda salida dinámica | Vistas                 |
+| **Content Security Policy**   | CSP restrictivo: scripts/style solo desde CDNs confiables, `'unsafe-inline'` para Tailwind, `form-action 'self'`, `frame-src 'none'` | `SecurityHeadersMiddleware` |
+| **Anti-Clickjacking**         | `X-Frame-Options: DENY`                                  | `SecurityHeadersMiddleware` |
+| **MIME sniffing prevention**  | `X-Content-Type-Options: nosniff`                        | `SecurityHeadersMiddleware` |
+| **Referrer Policy**           | `strict-origin-when-cross-origin`                        | `SecurityHeadersMiddleware` |
+| **Permissions Policy**        | Cámara, micrófono y geolocalización bloqueados           | `SecurityHeadersMiddleware` |
+| **Strict Transport Security** | `max-age=31536000; includeSubDomains` (solo si HTTPS activo) | `SecurityHeadersMiddleware` |
+| **Hash de contraseñas**       | `password_hash()` con `PASSWORD_DEFAULT` (bcrypt)        | AuthService, UserService |
+| **Verificación de password**  | `password_verify()` (comparación segura contra timing)   | AuthService            |
+| **Política de contraseñas**   | Mínimo 8 caracteres (antes 6)                            | AuthService, UserService |
+| **Anti-Session Fixation**     | `session_regenerate_id(true)` al autenticarse            | AuthService            |
+| **Cookies seguras**           | `httponly=true`, `samesite=Lax`, `secure` dinámico según HTTPS | `index.php` (session_set_cookie_params) |
+| **Timeout de sesión**         | Expiración automática después de 30 minutos              | AuthMiddleware         |
+| **Protección de rutas**       | Middlewares de autenticación y autorización por rol (RBAC) | Router + Middlewares   |
 | **Variables de entorno**      | API keys y credenciales en `.env`, nunca en código       | Config\Environment     |
 | **Bloqueo de .env**           | Apache deniega acceso directo a `.env`                   | .htaccess              |
 | **Error genérico en login**   | Mensaje único para credenciales inválidas                | AuthService            |
+| **Información oculta**        | Mensajes de error internos no revelan nombres de clase/método | `Router::callAction` |
+| **SSL verification**          | `verify_peer` y `verify_peer_name` activos en llamadas API externas | ExchangeRateService |
+| **Transacciones atómicas**    | Pago + actualización de reserva en `BEGIN/COMMIT/ROLLBACK` | PaymentService |
+| **Autorización por propietario** | Verificación de que `user_id` coincide con la reserva antes del pago | PaymentService |
+| **URL validation**            | Helper `validate_url()` con filtro de esquemas permitidos | `bootstrap.php` |
+| **CSRF en JS**                | Tokens incluidos en todos los fetch POST vía `window.CSRF_TOKEN` | dashboard_*.js |
+
+---
+
+## Mejoras de Clean Code Aplicadas
+
+### Refactorización de Controladores
+- **`AdminController`** ahora extiende a **`WorkerController`**, eliminando ~120 líneas de código duplicado (métodos `storeHairstyle`, `updateHairstyle`, `deleteHairstyle`, `updateReservation`). Las rutas de admin heredan funcionalidad vía herencia limpia.
+- Servicios compartidos declarados como `protected` en `WorkerController` para acceso desde `AdminController`.
+
+### Eliminación de Código Muerto
+
+| Archivo | Métodos eliminados | Razón |
+|---------|--------------------|-------|
+| `UserModel` | `updateRole()` | Nunca llamado |
+| `UserModel` | rename `getAllAdmins()` → `getWorkersAndAdmins()` | Nombre engañoso (retornaba admin+worker) |
+| `ReservationModel` | `assignWorker()` | Nunca llamado |
+| `ReservationModel` | `getReservationsByWorkerAndDate()` | Nunca llamado |
+| `BusinessHoursModel` | `getAllHours()`, `upsertHours()` | Wrappers inline eliminados |
+| `WorkerScheduleModel` | `getScheduleByWorker()`, `upsertSchedule()` | Wrappers inline eliminados |
+| `UserService` | `getAllUsers()`, `countByRole()`, `promoteToWorker()`, `demoteToClient()`, `updateProfile()`, `getUsersByRole()`, `deleteUser()` | Nunca llamados |
+| `PaymentService` | `createPayment()`, `getPaymentById()`, `updatePaymentStatus()` | Nunca llamados |
+| `HairstyleService` | `getPriceUSD()` | Nunca llamado |
+| `ScheduleService` | `getDayName()`, `getAllDayNames()`, `updateReservationSchedule()` | Nunca llamados |
+| `ExchangeRateService` | `getAllRates()` | Nunca llamado |
+
+### Helpers Globales (`bootstrap.php`)
+- **`h()`** — alias de `htmlspecialchars()` con `ENT_QUOTES | ENT_SUBSTITUTE`, UTF-8.
+- **`csrf_token()`** — genera/retorna token de 32 bytes almacenado en sesión.
+- **`verify_csrf_token()`** — comparación segura con `hash_equals()`.
+- **`validate_url()`** — valida URL con esquemas http/https permitidos.
+
+### Seguridad en Sesiones
+- `session_set_cookie_params()` configurado **antes** de `session_start()` en `index.php`.
+- Cookies con `httponly`, `samesite=Lax`, `secure` dinámico.
 
 ---
 
@@ -683,6 +734,31 @@ $router->post('products/store', 'App\\Controllers\\ProductController', 'store', 
 | Tailwind CSS 4 | Framework de utilidades CSS                  |
 | Stripe API     | Pasarela de pagos                            |
 | Apache         | Servidor web con `mod_rewrite`               |
+
+---
+
+---
+
+## Changelog
+
+### 2026-07-06 — Refactorización OWASP + Clean Code
+
+#### Seguridad (OWASP Top 10)
+- **CSRF Protection:** Token de 32 bytes en todas las formas y peticiones AJAX. Validación global en `index.php` para todo POST.
+- **Content Security Policy:** Cabecera CSP restrictiva agregada vía `SecurityHeadersMiddleware`.
+- **Anti-Clickjacking + MIME sniffing:** `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`.
+- **Cookies seguras:** `session_set_cookie_params()` con `httponly`, `samesite=Lax`, `secure` dinámico.
+- **SSL verification:** `verify_peer` y `verify_peer_name` habilitados en llamadas a API externa.
+- **Transacciones atómicas:** `PaymentService::processPayment` ahora usa `BEGIN/COMMIT/ROLLBACK`.
+- **Autorización por propietario:** Verificación de que la reserva pertenece al usuario antes del pago.
+- **Política de contraseñas:** Mínimo 8 caracteres (antes 6).
+- **Información oculta:** Mensajes de error internos no revelan nombres de clase/método en `Router`.
+
+#### Clean Code
+- **`AdminController`** ahora extiende a `WorkerController`, eliminando ~120 líneas duplicadas.
+- **Código muerto eliminado:** 22 métodos no utilizados removidos de Models y Services.
+- **Helpers globales:** `h()`, `csrf_token()`, `verify_csrf_token()`, `validate_url()` en `bootstrap.php`.
+- **Nombres corregidos:** `UserModel::getAllAdmins()` renombrado a `getWorkersAndAdmins()`.
 
 ---
 

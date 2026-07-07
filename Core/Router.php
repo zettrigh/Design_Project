@@ -186,8 +186,6 @@ class Router
 
     /**
      * Instancia el controlador por su FQCN y ejecuta el método.
-     * El autoloader PSR-4 se encarga de localizar y cargar
-     * el archivo de la clase automáticamente.
      *
      * @param string $fqcn      FQCN del controlador.
      * @param string $methodName Nombre del método a ejecutar.
@@ -196,13 +194,19 @@ class Router
     private function callAction(string $fqcn, string $methodName): void
     {
         if (!class_exists($fqcn)) {
-            die("Error: La clase '{$fqcn}' no existe. Verifica que el namespace y el directorio coincidan (PSR-4).");
+            http_response_code(500);
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Error interno del servidor.']);
+            exit;
         }
 
         $controller = new $fqcn($this->db);
 
         if (!method_exists($controller, $methodName)) {
-            die("Error: El método '{$methodName}' no existe en '{$fqcn}'.");
+            http_response_code(500);
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Error interno del servidor.']);
+            exit;
         }
 
         $controller->$methodName();

@@ -36,7 +36,7 @@ $baseUrl = $baseUrl ?? '/HomeWorks/Design_Project';
                 </div>
                 <div class="flex items-center space-x-4">
                     <span class="hidden md:inline text-[#FAF6F0]/80 text-sm font-medium">Trabajador: <strong class="text-[#FAF6F0]"><?php echo htmlspecialchars($username); ?></strong></span>
-                    <a href="<?php echo $baseUrl; ?>/logout" class="inline-flex items-center gap-1.5 px-5 py-2.5 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl text-xs sm:text-sm shadow-lg shadow-red-900/30 hover:shadow-red-800/40 transition-all duration-200 cursor-pointer">Cerrar Sesión</a>
+                    <a href="<?php echo $baseUrl; ?>/logout" class="flex items-center space-x-2 px-4 py-2 rounded-xl text-sm font-bold text-red-300 hover:bg-red-500/20 hover:text-red-200 transition-all cursor-pointer">Cerrar Sesión</a>
                 </div>
             </div>
         </div>
@@ -52,6 +52,7 @@ $baseUrl = $baseUrl ?? '/HomeWorks/Design_Project';
                     <p id="form-desc" class="text-xs text-[#5C4333]/55 mt-1">Completa los campos para publicar un peinado</p>
                 </div>
                 <form id="hairstyle-form" class="space-y-4">
+                    <input type="hidden" name="_csrf_token" value="<?php echo csrf_token(); ?>">
                     <input type="hidden" id="hairstyle-id" name="id" value="">
                     <div>
                         <label class="block text-xs font-bold uppercase tracking-wider text-[#5C4333]/60 mb-1">Nombre</label>
@@ -192,7 +193,7 @@ $baseUrl = $baseUrl ?? '/HomeWorks/Design_Project';
     </main>
 
     <?php require_once __DIR__ . '/partials/js_modal_utils.php'; ?>
-    <script>window.BASE_URL = '<?php echo $baseUrl; ?>';</script>
+    <script>window.BASE_URL = '<?php echo $baseUrl; ?>'; window.CSRF_TOKEN = '<?php echo csrf_token(); ?>';</script>
     <script src="<?php echo $baseUrl; ?>/assets/js/dashboard_worker.js"></script>
 </body>
 </html>

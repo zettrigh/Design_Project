@@ -20,11 +20,14 @@ class PaymentService
         $this->hairstyleModel = $hairstyleModel;
     }
 
-    public function processPayment(int $reservationId, string $paymentMethodId): Result
+    public function processPayment(int $reservationId, int $userId, string $paymentMethodId): Result
     {
         $reservation = $this->reservationModel->getReservationById($reservationId);
         if (!$reservation) {
             return Result::failure('Reserva no encontrada.');
+        }
+        if ((int)$reservation['user_id'] !== $userId) {
+            return Result::failure('La reserva no pertenece al usuario actual.');
         }
         if ($reservation['status'] !== 'pending') {
             return Result::failure('La reserva no está pendiente de pago.');
@@ -36,49 +39,38 @@ class PaymentService
         }
 
         $amount = (float) $hairstyle['price'];
-        $transactionId = 'txn_' . uniqid();
+        $transactionId = 'txn_' . uniqid('', true);
 
-        $paymentId = $this->paymentModel->createPayment(
-            $reservationId,
-            (int)$reservation['user_id'],
-            $amount,
-            'USD',
-            1.0,
-            $amount,
-            $paymentMethodId,
-            $transactionId
-        );
+        $db = $this->reservationModel->getDb();
+        try {
+            $db->beginTransaction();
 
-        $this->reservationModel->updateReservationStatus($reservationId, 'confirmed');
+            $paymentId = $this->paymentModel->createPayment(
+                $reservationId,
+                (int)$reservation['user_id'],
+                $amount,
+                'USD',
+                1.0,
+                $amount,
+                $paymentMethodId,
+                $transactionId
+            );
 
-        return Result::success(
-            ['payment_id' => $paymentId, 'transaction_id' => $transactionId],
-            'Pago procesado exitosamente.'
-        );
-    }
+            $updated = $this->reservationModel->updateReservationStatus($reservationId, 'confirmed');
+            if (!$updated) {
+                throw new \RuntimeException('Error al actualizar el estado de la reserva.');
+            }
 
-    public function createPayment(int $reservationId, int $userId, float $amount, string $currency, float $exchangeRate, float $amountUsd, string $paymentMethod, string $transactionId): Result
-    {
-        if ($amount <= 0) {
-            return Result::failure('El monto debe ser mayor a cero.');
+            $db->commit();
+
+            return Result::success(
+                ['payment_id' => $paymentId, 'transaction_id' => $transactionId],
+                'Pago procesado exitosamente.'
+            );
+        } catch (\Throwable $e) {
+            $db->rollBack();
+            return Result::failure('Error al procesar el pago: ' . $e->getMessage());
         }
-        if (empty(trim($paymentMethod))) {
-            return Result::failure('El método de pago es obligatorio.');
-        }
-        if (empty(trim($transactionId))) {
-            return Result::failure('El ID de transacción es obligatorio.');
-        }
-
-        $paymentId = $this->paymentModel->createPayment(
-            $reservationId, $userId, $amount, $currency, $exchangeRate, $amountUsd, $paymentMethod, $transactionId
-        );
-
-        return Result::success(['payment_id' => $paymentId], 'Pago registrado exitosamente.');
-    }
-
-    public function getPaymentById(int $id): array|false
-    {
-        return $this->paymentModel->getPaymentById($id);
     }
 
     public function getUserPayments(int $userId): array
@@ -89,18 +81,5 @@ class PaymentService
     public function getAllPayments(): array
     {
         return $this->paymentModel->getAllPayments();
-    }
-
-    public function updatePaymentStatus(int $id, string $status): Result
-    {
-        $validStatuses = ['pending', 'completed', 'failed', 'refunded'];
-        if (!in_array($status, $validStatuses, true)) {
-            return Result::failure('Estado de pago inválido.');
-        }
-
-        $updated = $this->paymentModel->updatePaymentStatus($id, $status);
-        return $updated
-            ? Result::success(null, 'Estado del pago actualizado.')
-            : Result::failure('Error al actualizar el estado del pago.');
     }
 }

@@ -33,6 +33,7 @@ $baseUrl = $baseUrl ?? '/HomeWorks/Design_Project';
                 <p class="text-sm text-[#5C4333]/65 mb-6">Regístrate a continuación para agendar tus peinados</p>
 
                 <form id="register-form" class="space-y-4">
+                    <input type="hidden" name="_csrf_token" value="<?php echo csrf_token(); ?>">
                     <div>
                         <label for="username" class="block text-xs font-bold uppercase tracking-wider text-[#5C4333]/80 mb-1.5">Nombre de Usuario</label>
                         <input type="text" id="username" name="username" placeholder="TuNombre12"

@@ -25,8 +25,8 @@ class AuthService
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
             return Result::failure('El correo electrónico no es válido.');
         }
-        if (strlen($password) < 6) {
-            return Result::failure('La contraseña debe tener al menos 6 caracteres.');
+        if (strlen($password) < 8) {
+            return Result::failure('La contraseña debe tener al menos 8 caracteres.');
         }
         if ($password !== $confirmPassword) {
             return Result::failure('Las contraseñas no coinciden.');

@@ -17,15 +17,14 @@ class ReservationModel
     {
         $stmt = $this->db->prepare(
             "SELECT " . self::BASE_COLUMNS . ",
-                    u.username AS user_name,
+                    u.username,
+                    u.email,
                     h.name AS hairstyle_name,
                     h.price,
-                    h.image_url,
-                    w.username AS worker_name
+                    h.image_url
              FROM reservations r
              JOIN users u ON u.id = r.user_id
              JOIN hairstyles h ON h.id = r.hairstyle_id
-             LEFT JOIN users w ON w.id = r.worker_id
              ORDER BY r.reserved_at DESC"
         );
         $stmt->execute();
@@ -36,7 +35,8 @@ class ReservationModel
     {
         $stmt = $this->db->prepare(
             "SELECT " . self::BASE_COLUMNS . ",
-                    u.username AS user_name,
+                    u.username,
+                    u.email,
                     h.name AS hairstyle_name,
                     h.price,
                     h.image_url,
@@ -56,7 +56,8 @@ class ReservationModel
     {
         $stmt = $this->db->prepare(
             "SELECT " . self::BASE_COLUMNS . ",
-                    u.username AS user_name,
+                    u.username,
+                    u.email,
                     h.name AS hairstyle_name,
                     h.price,
                     h.image_url,
@@ -95,27 +96,6 @@ class ReservationModel
         return $stmt->execute([':status' => $status, ':id' => $id]);
     }
 
-    public function updateReservationSchedule(int $id, int $workerId, string $appointmentDate, string $appointmentTime, string $endTime): bool
-    {
-        $stmt = $this->db->prepare(
-            "UPDATE reservations SET worker_id = :worker_id, appointment_date = :appointment_date,
-             appointment_time = :appointment_time, end_time = :end_time WHERE id = :id"
-        );
-        return $stmt->execute([
-            ':id'               => $id,
-            ':worker_id'        => $workerId,
-            ':appointment_date' => $appointmentDate,
-            ':appointment_time' => $appointmentTime,
-            ':end_time'         => $endTime,
-        ]);
-    }
-
-    public function assignWorker(int $id, int $workerId): bool
-    {
-        $stmt = $this->db->prepare("UPDATE reservations SET worker_id = :worker_id WHERE id = :id");
-        return $stmt->execute([':worker_id' => $workerId, ':id' => $id]);
-    }
-
     public function hasTimeConflict(string $appointmentDate, string $appointmentTime, string $endTime, ?int $workerId = null, ?int $excludeId = null): bool
     {
         $sql = "SELECT id FROM reservations
@@ -149,7 +129,8 @@ class ReservationModel
     {
         $stmt = $this->db->prepare(
             "SELECT " . self::BASE_COLUMNS . ",
-                    u.username AS user_name,
+                    u.username,
+                    u.email,
                     h.name AS hairstyle_name,
                     h.price,
                     w.username AS worker_name
@@ -164,23 +145,6 @@ class ReservationModel
         return $stmt->fetchAll();
     }
 
-    public function getReservationsByWorkerAndDate(int $workerId, string $date): array
-    {
-        $stmt = $this->db->prepare(
-            "SELECT " . self::BASE_COLUMNS . ",
-                    u.username AS user_name,
-                    h.name AS hairstyle_name,
-                    h.price
-             FROM reservations r
-             JOIN users u ON u.id = r.user_id
-             JOIN hairstyles h ON h.id = r.hairstyle_id
-             WHERE r.worker_id = :worker_id AND r.appointment_date = :date AND r.status != 'cancelled'
-             ORDER BY r.appointment_time ASC"
-        );
-        $stmt->execute([':worker_id' => $workerId, ':date' => $date]);
-        return $stmt->fetchAll();
-    }
-
     public function getDb(): \PDO
     {
         return $this->db;
@@ -189,7 +153,7 @@ class ReservationModel
     public function getAllReservationsFiltered(?int $workerId = null, ?string $date = null, ?string $status = null): array
     {
         $sql = "SELECT " . self::BASE_COLUMNS . ",
-                       u.username AS user_name, h.name AS hairstyle_name, h.price, h.image_url,
+                       u.username, u.email, h.name AS hairstyle_name, h.price, h.image_url,
                        w.username AS worker_name
                 FROM reservations r
                 JOIN users u ON u.id = r.user_id

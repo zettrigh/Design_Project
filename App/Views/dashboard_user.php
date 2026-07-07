@@ -35,7 +35,10 @@ $baseUrl = $baseUrl ?? '/HomeWorks/Design_Project';
                     </div>
                 </div>
                 <div class="flex items-center space-x-4">
-                    <a href="<?php echo $baseUrl; ?>/logout" class="inline-flex items-center gap-1.5 px-5 py-2.5 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl text-xs sm:text-sm shadow-lg shadow-red-900/30 hover:shadow-red-800/40 transition-all duration-200 cursor-pointer">Cerrar Sesión</a>
+                    <a href="<?php echo $baseUrl; ?>/logout" class="flex items-center space-x-2 px-4 py-2 rounded-xl text-sm font-bold text-white bg-red-600 text-left cursor-pointer"><p>Cerrar Sesión</p>
+                        <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                    </a>
+                    
                 </div>
             </div>
         </div>
@@ -91,7 +94,6 @@ $baseUrl = $baseUrl ?? '/HomeWorks/Design_Project';
                                 </div>
                                 <div class="space-y-3 pt-2">
                                     <div class="flex justify-between items-center">
-                                        <span class="text-xs uppercase font-bold tracking-widest text-[#5C4333]/40">Precio</span>
                                         <span class="text-xl font-extrabold text-[#B56B45]">$<?php echo number_format($style['price'], 2); ?> USD</span>
                                         <?php if ($ves_rate > 0): ?>
                                             <span class="text-xs font-bold text-emerald-600 block text-right"><?php echo number_format($style['price'] * $ves_rate, 2); ?> VES</span>
@@ -239,7 +241,7 @@ $baseUrl = $baseUrl ?? '/HomeWorks/Design_Project';
     </div>
 
     <?php require_once __DIR__ . '/partials/js_modal_utils.php'; ?>
-    <script>window.BASE_URL = '<?php echo $baseUrl; ?>';</script>
+    <script>window.BASE_URL = '<?php echo $baseUrl; ?>'; window.CSRF_TOKEN = '<?php echo csrf_token(); ?>';</script>
     <script src="<?php echo $baseUrl; ?>/assets/js/dashboard_user.js"></script>
 </body>
 </html>

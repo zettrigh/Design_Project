@@ -57,14 +57,4 @@ class BusinessHoursModel
             ':is_active2'  => $isActive ? 1 : 0,
         ]);
     }
-
-    public function getAllHours(): array
-    {
-        return $this->getAll();
-    }
-
-    public function upsertHours(int $dayOfWeek, string $openTime, string $closeTime, bool $isActive): bool
-    {
-        return $this->upsert($dayOfWeek, $openTime, $closeTime, $isActive);
-    }
 }

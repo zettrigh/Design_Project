@@ -78,7 +78,7 @@ class UserModel
         return $stmt->fetchAll();
     }
 
-    public function getAllAdmins(): array
+    public function getWorkersAndAdmins(): array
     {
         $stmt = $this->db->prepare(
             "SELECT id, username, email, role, created_at
@@ -116,12 +116,6 @@ class UserModel
             ':password' => $newPasswordHash,
             ':id'       => $id,
         ]);
-    }
-
-    public function updateRole(int $id, string $role): bool
-    {
-        $stmt = $this->db->prepare("UPDATE users SET role = :role WHERE id = :id");
-        return $stmt->execute([':role' => $role, ':id' => $id]);
     }
 
     public function deleteUser(int $id): bool

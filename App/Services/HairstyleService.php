@@ -29,12 +29,6 @@ class HairstyleService
         return $this->hairstyleModel->getHairstyleById($id);
     }
 
-    public function getPriceUSD(int $id): ?float
-    {
-        $hairstyle = $this->hairstyleModel->getHairstyleById($id);
-        return $hairstyle ? (float) $hairstyle['price'] : null;
-    }
-
     public function createHairstyle(string $name, string $description, float $price, string $imageUrl, string $status = 'active', int $durationMinutes = 60): Result
     {
         if (empty(trim($name))) {

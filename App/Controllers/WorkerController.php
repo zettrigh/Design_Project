@@ -4,27 +4,37 @@ namespace App\Controllers;
 
 use App\Models\HairstyleModel;
 use App\Models\ReservationModel;
+use App\Models\PaymentModel;
 use App\Models\BusinessHoursModel;
 use App\Models\WorkerScheduleModel;
 use App\Services\HairstyleService;
 use App\Services\ReservationService;
 use App\Services\ScheduleService;
+use App\Services\PaymentService;
+use App\Services\UserService;
+use App\Models\UserModel;
 
 class WorkerController
 {
-    private HairstyleService $hairstyleService;
-    private ReservationService $reservationService;
-    private ScheduleService $scheduleService;
+    protected HairstyleService $hairstyleService;
+    protected ReservationService $reservationService;
+    protected ScheduleService $scheduleService;
+    protected ?PaymentService $paymentService = null;
+    protected ?UserService $userService = null;
 
     public function __construct(\PDO $dbConnection)
     {
+        $userModel           = new UserModel($dbConnection);
         $hairstyleModel      = new HairstyleModel($dbConnection);
         $reservationModel    = new ReservationModel($dbConnection);
+        $paymentModel        = new PaymentModel($dbConnection);
         $businessHoursModel  = new BusinessHoursModel($dbConnection);
         $workerScheduleModel = new WorkerScheduleModel($dbConnection);
 
+        $this->userService        = new UserService($userModel);
         $this->hairstyleService   = new HairstyleService($hairstyleModel);
         $this->reservationService = new ReservationService($reservationModel, $hairstyleModel);
+        $this->paymentService     = new PaymentService($paymentModel, $reservationModel, $hairstyleModel);
         $this->scheduleService    = new ScheduleService($businessHoursModel, $workerScheduleModel, $reservationModel, $hairstyleModel);
     }
 
