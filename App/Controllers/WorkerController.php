@@ -44,9 +44,15 @@ class WorkerController
         $name            = $_POST['name']            ?? '';
         $description     = $_POST['description']     ?? '';
         $price           = floatval($_POST['price'] ?? 0.0);
-        $imageUrl        = $_POST['image_url']        ?? '';
+        $imageUrl        = $this->handleImageUpload();
         $status          = $_POST['status']           ?? 'active';
         $durationMinutes = intval($_POST['duration_minutes'] ?? 60);
+
+        if ($imageUrl === null) {
+            echo json_encode(['success' => false, 'message' => 'Debes seleccionar una imagen.']);
+            exit;
+        }
+
         echo json_encode($this->hairstyleService->createHairstyle($name, $description, $price, $imageUrl, $status, $durationMinutes)->toArray());
         exit;
     }
@@ -58,11 +64,51 @@ class WorkerController
         $name            = $_POST['name']            ?? '';
         $description     = $_POST['description']     ?? '';
         $price           = floatval($_POST['price'] ?? 0.0);
-        $imageUrl        = $_POST['image_url']        ?? '';
+        $imageUrl        = $this->handleImageUpload();
         $status          = $_POST['status']           ?? 'active';
         $durationMinutes = intval($_POST['duration_minutes'] ?? 60);
+
+        if ($imageUrl === null) {
+            $existing = $this->hairstyleService->getHairstyleById($id);
+            if ($existing && isset($existing['image_url'])) {
+                $imageUrl = $existing['image_url'];
+            } else {
+                echo json_encode(['success' => false, 'message' => 'Debes seleccionar una imagen.']);
+                exit;
+            }
+        }
+
         echo json_encode($this->hairstyleService->updateHairstyle($id, $name, $description, $price, $imageUrl, $status, $durationMinutes)->toArray());
         exit;
+    }
+
+    private function handleImageUpload(): ?string
+    {
+        if (!isset($_FILES['image_file']) || $_FILES['image_file']['error'] !== UPLOAD_ERR_OK) {
+            return null;
+        }
+
+        $file = $_FILES['image_file'];
+        $allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+
+        if (!in_array($file['type'], $allowed)) {
+            return null;
+        }
+
+        $uploadDir = dirname(__DIR__, 2) . '/uploads/hairstyles';
+        if (!is_dir($uploadDir)) {
+            mkdir($uploadDir, 0755, true);
+        }
+
+        $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
+        $filename = uniqid('hair_', true) . '.' . strtolower($ext);
+        $destination = $uploadDir . '/' . $filename;
+
+        if (!move_uploaded_file($file['tmp_name'], $destination)) {
+            return null;
+        }
+
+        return 'uploads/hairstyles/' . $filename;
     }
 
     public function deleteHairstyle(): void

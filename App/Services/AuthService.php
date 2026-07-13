@@ -46,7 +46,8 @@ class AuthService
             return Result::failure('Error al crear el usuario.');
         }
 
-        return Result::success(['user_id' => $userId]);
+        $baseUrl = \Config\Environment::get('BASE_URL', '/HomeWorks/Design_Project');
+        return Result::success(['user_id' => $userId, 'redirect' => $baseUrl . '/login']);
     }
 
     public function login(string $email, string $password): Result

@@ -29,6 +29,15 @@ $baseUrl = $baseUrl ?? '/HomeWorks/Design_Project';
     <link rel="stylesheet" href="<?php echo $baseUrl; ?>/src/output.css">
     <style>
         body { font-family: 'Plus Jakarta Sans', sans-serif }
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            z-index: -1;
+            background: url('<?php echo $baseUrl; ?>/src/img/braid_goddess.png') center / cover no-repeat;
+            filter: blur(12px);
+            -webkit-filter: blur(12px);
+        }
         h1, h2, h3, h4 { font-family: 'Outfit', sans-serif }
         #sidebar { transition: width 0.3s ease, transform 0.3s ease; }
         #main-content { transition: margin-left 0.3s ease; }
@@ -127,10 +136,6 @@ $baseUrl = $baseUrl ?? '/HomeWorks/Design_Project';
                     <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                     <span class="sidebar-label">Horarios</span>
                 </button>
-                <button onclick="showSection('agenda')" class="nav-btn w-full flex items-center space-x-3 px-4 py-2.5 rounded-xl text-sm font-bold text-[#EFE5D9] hover:bg-[#FAF6F0]/10 hover:text-white transition-all text-left" data-section="agenda">
-                    <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                    <span class="sidebar-label">Agenda</span>
-                </button>
                 <button onclick="showSection('workers')" class="nav-btn w-full flex items-center space-x-3 px-4 py-2.5 rounded-xl text-sm font-bold text-[#EFE5D9] hover:bg-[#FAF6F0]/10 hover:text-white transition-all text-left" data-section="workers">
                     <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"></path></svg>
                     <span class="sidebar-label">Trabajadores</span>
@@ -167,9 +172,9 @@ $baseUrl = $baseUrl ?? '/HomeWorks/Design_Project';
 
             <!-- Section: Resumen -->
             <section id="section-dashboard" class="section-panel space-y-6">
-                <div>
-                    <h2 class="text-2xl font-extrabold tracking-tight">Resumen General</h2>
-                    <p class="text-sm text-[#5C4333]/65">Panorama general del negocio</p>
+                <div class="p-6 rounded-2xl shadow-sm">
+                    <h2 class="text-2xl font-extrabold tracking-tight text-white">Resumen General</h2>
+                    <p class="text-sm text-white">Panorama general del negocio</p>
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                     <div class="bg-white p-6 rounded-2xl border border-[#EFE5D9] shadow-sm flex flex-col justify-between">
@@ -245,26 +250,6 @@ $baseUrl = $baseUrl ?? '/HomeWorks/Design_Project';
                 </div>
             </section>
 
-            <!-- Section: Agenda -->
-            <section id="section-agenda" class="section-panel hidden space-y-6">
-                <div class="bg-white rounded-3xl border border-[#EFE5D9] p-6 sm:p-8 shadow-md">
-                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-[#EFE5D9] pb-4">
-                        <div>
-                            <h3 class="text-2xl font-extrabold tracking-tight">Agenda del Día</h3>
-                            <p class="text-sm text-[#5C4333]/65">Visualiza las citas programadas</p>
-                        </div>
-                        <div class="mt-3 sm:mt-0 flex items-center gap-2">
-                            <input type="date" id="overview-date" value="<?php echo date('Y-m-d'); ?>"
-                                class="px-3 py-2 bg-[#FAF6F0]/60 border border-[#EFE5D9] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#B56B45]">
-                            <button onclick="loadScheduleOverview()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs uppercase tracking-wider transition-all cursor-pointer">Ver</button>
-                        </div>
-                    </div>
-                    <div id="schedule-overview-container" class="mt-6">
-                        <p class="text-sm text-[#5C4333]/50 text-center py-4">Selecciona una fecha para ver la agenda.</p>
-                    </div>
-                </div>
-            </section>
-
             <!-- Section: Trabajadores -->
             <section id="section-workers" class="section-panel hidden space-y-6">
                 <div class="bg-white rounded-3xl border border-[#EFE5D9] p-6 sm:p-8 shadow-md">
@@ -317,7 +302,7 @@ $baseUrl = $baseUrl ?? '/HomeWorks/Design_Project';
                             <h3 id="form-title" class="text-xl font-extrabold tracking-tight">Agregar Nuevo Peinado</h3>
                             <p id="form-desc" class="text-xs text-[#5C4333]/55 mt-1">Completa los campos para publicar un peinado</p>
                         </div>
-                        <form id="hairstyle-form" class="space-y-4">
+                        <form id="hairstyle-form" class="space-y-4" enctype="multipart/form-data">
                             <input type="hidden" name="_csrf_token" value="<?php echo csrf_token(); ?>">
                             <input type="hidden" id="hairstyle-id" name="id" value="">
                             <div>
@@ -332,27 +317,27 @@ $baseUrl = $baseUrl ?? '/HomeWorks/Design_Project';
                             </div>
                             <div class="grid grid-cols-3 gap-4">
                                 <div>
-                                    <label class="block text-xs font-bold uppercase tracking-wider text-[#5C4333]/60 mb-1">Precio (USD)</label>
-                                    <input type="number" id="price" name="price" step="0.01" min="1" required placeholder="0.00"
-                                        class="block w-full px-4 py-2.5 bg-[#FAF6F0]/60 border border-[#EFE5D9] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#B56B45] text-sm">
+                                    <label class="block text-xs font-bold uppercase tracking-wider text-[#5C4333]/60 mb-1">Precio</label>
+                                    <input type="number" id="price" name="price" step="0.01" min="1" required placeholder="USD"
+                                        class="block w-full px-2 py-2.5 bg-[#FAF6F0]/60 border border-[#EFE5D9] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#B56B45] text-sm">
                                 </div>
                                 <div>
-                                    <label class="block text-xs font-bold uppercase tracking-wider text-[#5C4333]/60 mb-1">Duración (min)</label>
-                                    <input type="number" id="duration_minutes" name="duration_minutes" min="15" max="480" value="60" required
-                                        class="block w-full px-4 py-2.5 bg-[#FAF6F0]/60 border border-[#EFE5D9] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#B56B45] text-sm">
+                                    <label class="block text-xs font-bold uppercase tracking-wider text-[#5C4333]/60 mb-1">Duración</label>
+                                    <input type="number" id="duration_minutes" name="duration_minutes" min="15" max="480" placeholder="MIN" required
+                                        class="block w-full px-2 py-2.5 bg-[#FAF6F0]/60 border border-[#EFE5D9] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#B56B45] text-sm">
                                 </div>
                                 <div>
                                     <label class="block text-xs font-bold uppercase tracking-wider text-[#5C4333]/60 mb-1">Estado</label>
-                                    <select id="status" name="status" required class="block w-full px-4 py-2.5 bg-[#FAF6F0]/60 border border-[#EFE5D9] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#B56B45] text-sm">
+                                    <select id="status" name="status" required class="block w-full px-2 py-3 bg-[#FAF6F0]/60 border border-[#EFE5D9] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#B56B45] text-sm">
                                         <option value="active">Activo</option>
                                         <option value="inactive">Inactivo</option>
                                     </select>
                                 </div>
                             </div>
                             <div>
-                                <label class="block text-xs font-bold uppercase tracking-wider text-[#5C4333]/60 mb-1">URL Imagen</label>
-                                <input type="text" id="image_url" name="image_url" placeholder="URL de la imagen"
-                                    class="block w-full px-4 py-2.5 bg-[#FAF6F0]/60 border border-[#EFE5D9] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#B56B45] text-sm">
+                                <label class="block text-xs font-bold uppercase tracking-wider text-[#5C4333]/60 mb-1">Imagen</label>
+                                <input type="file" id="image_file" name="image_file" accept="image/*"
+                                    class="block w-full px-4 py-2.5 bg-[#FAF6F0]/60 border border-[#EFE5D9] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#B56B45] text-sm file:mr-4 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-[#B56B45]/10 file:text-[#B56B45] file:cursor-pointer hover:file:bg-[#B56B45]/20">
                             </div>
                             <div class="flex flex-col gap-2 pt-2">
                                 <button type="submit" id="submit-btn" class="w-full py-3 px-4 bg-[#5C4333] hover:bg-[#3D2B1E] text-[#FAF6F0] font-bold rounded-xl text-xs uppercase tracking-wider transition-all shadow-md cursor-pointer"><span id="btn-text">Publicar Peinado</span></button>
@@ -371,7 +356,7 @@ $baseUrl = $baseUrl ?? '/HomeWorks/Design_Project';
                             <div class="overflow-x-auto">
                                 <table class="min-w-full divide-y divide-[#EFE5D9]/40">
                                     <thead>
-                                        <tr class="bg-[#FAF6F0]/40">
+                                        <tr class="bg-[#EFE5D9]/60">
                                             <th class="px-4 py-3 text-left text-xs font-bold text-[#5C4333]/50 uppercase tracking-widest">Peinado</th>
                                             <th class="px-4 py-3 text-left text-xs font-bold text-[#5C4333]/50 uppercase tracking-widest">Estado</th>
                                             <th class="px-4 py-3 text-right text-xs font-bold text-[#5C4333]/50 uppercase tracking-widest">Acciones</th>
@@ -415,35 +400,35 @@ $baseUrl = $baseUrl ?? '/HomeWorks/Design_Project';
                     <?php if (empty($reservations)): ?>
                         <p class="text-sm text-[#5C4333]/50 text-center py-8 mt-6">No hay reservas en el sistema.</p>
                     <?php else: ?>
-                        <div class="overflow-x-auto mt-6">
-                            <table class="min-w-full divide-y divide-[#EFE5D9]/40">
+                        <div class="mt-6">
+                            <table class="w-full divide-y divide-[#EFE5D9]/40">
                                 <thead class="bg-[#FAF6F0]/60">
                                     <tr>
-                                        <th class="px-6 py-4 text-left text-xs font-bold text-[#5C4333]/50 uppercase tracking-widest">Cliente</th>
-                                        <th class="px-6 py-4 text-left text-xs font-bold text-[#5C4333]/50 uppercase tracking-widest">Peinado</th>
-                                        <th class="px-6 py-4 text-left text-xs font-bold text-[#5C4333]/50 uppercase tracking-widest">Precio</th>
-                                        <th class="px-6 py-4 text-left text-xs font-bold text-[#5C4333]/50 uppercase tracking-widest">Cita</th>
-                                        <th class="px-6 py-4 text-left text-xs font-bold text-[#5C4333]/50 uppercase tracking-widest">Estado</th>
-                                        <th class="px-6 py-4 text-right text-xs font-bold text-[#5C4333]/50 uppercase tracking-widest">Acciones</th>
+                                        <th class="px-4 py-4 text-left text-xs font-bold text-[#5C4333]/50 uppercase tracking-widest">Cliente</th>
+                                        <th class="px-4 py-4 text-left text-xs font-bold text-[#5C4333]/50 uppercase tracking-widest">Peinado</th>
+                                        <th class="px-4 py-4 text-left text-xs font-bold text-[#5C4333]/50 uppercase tracking-widest">Precio</th>
+                                        <th class="px-4 py-4 text-left text-xs font-bold text-[#5C4333]/50 uppercase tracking-widest">Cita</th>
+                                        <th class="px-4 py-4 text-left text-xs font-bold text-[#5C4333]/50 uppercase tracking-widest">Estado</th>
+                                        <th class="px-4 py-4 text-right text-xs font-bold text-[#5C4333]/50 uppercase tracking-widest">Acciones</th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-[#EFE5D9]/40">
                                     <?php foreach ($reservations as $res): ?>
                                         <tr class="hover:bg-[#FAF6F0]/20 transition-colors">
-                                             <td data-label="Cliente" class="px-6 py-4 whitespace-nowrap text-sm font-extrabold text-[#5C4333]">
+                                             <td data-label="Cliente" class="px-4 py-4 text-sm font-extrabold text-[#5C4333]">
                                                 <?php echo htmlspecialchars($res['username']); ?>
                                             </td>
-                                            <td data-label="Peinado" class="px-6 py-4 whitespace-nowrap text-sm font-bold text-[#5C4333]/85"><?php echo htmlspecialchars($res['hairstyle_name']); ?></td>
-                                            <td data-label="Precio" class="px-6 py-4 whitespace-nowrap text-sm font-extrabold text-[#B56B45]">$<?php echo number_format($res['price'], 2); ?></td>
-                                            <td data-label="Cita" class="px-6 py-4 whitespace-nowrap text-sm text-[#5C4333]/75">
+                                            <td data-label="Peinado" class="px-4 py-4 text-sm font-bold text-[#5C4333]/85"><?php echo htmlspecialchars($res['hairstyle_name']); ?></td>
+                                            <td data-label="Precio" class="px-4 py-4 text-sm font-extrabold text-[#B56B45]">$<?php echo number_format($res['price'], 2); ?></td>
+                                            <td data-label="Cita" class="px-4 py-4 text-sm text-[#5C4333]/75">
                                                 <?php if (!empty($res['appointment_date'])): ?>
                                                     <?php echo date('d M', strtotime($res['appointment_date'])); ?> &middot; <?php echo date('g:i A', strtotime($res['appointment_time'])); ?>
                                                 <?php else: ?>
                                                     <span class="text-xs text-[#5C4333]/40">Sin cita</span>
                                                 <?php endif; ?>
                                             </td>
-                                            <td data-label="Estado" class="px-6 py-4 whitespace-nowrap"><?php if ($res['status'] === 'pending'): ?><span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200/50">Pendiente</span><?php elseif ($res['status'] === 'confirmed'): ?><span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/50">Confirmado</span><?php else: ?><span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-stone-100 text-stone-600 border border-stone-200">Cancelado</span><?php endif; ?></td>
-                                             <td data-label="Acciones" class="px-6 py-4 whitespace-nowrap text-right text-xs font-semibold">
+                                            <td data-label="Estado" class="px-4 py-4"><?php if ($res['status'] === 'pending'): ?><span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200/50">Pendiente</span><?php elseif ($res['status'] === 'confirmed'): ?><span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/50">Confirmado</span><?php else: ?><span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-stone-100 text-stone-600 border border-stone-200">Cancelado</span><?php endif; ?></td>
+                                             <td data-label="Acciones" class="px-4 py-4 text-right text-xs font-semibold">
                                                 <?php if ($res['status'] === 'pending'): ?>
                                                     <span class="inline-flex gap-1">
                                                     <button onclick="cambiarEstadoReserva(<?php echo $res['id']; ?>, 'confirmed')" class="px-2 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-all cursor-pointer shadow-sm">Confirmar</button>

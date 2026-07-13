@@ -47,11 +47,11 @@ $baseUrl = $baseUrl ?? '/HomeWorks/Design_Project';
     <main class="max-w-7xl mx-auto py-10 px-4 sm:px-6 lg:px-8 space-y-12">
 
         <!-- Welcome Card -->
-        <div class="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#5C4333] to-[#3D2B1E] p-8 sm:p-10 text-[#FAF6F0] shadow-xl">
-            <div class="absolute -right-16 -top-16 size-48 rounded-full bg-[#B56B45]/10 blur-xl"></div>
+        <div class="relative overflow-hidden rounded-3xl p-8 sm:p-10 shadow-xl">
+            <img src="<?php echo $baseUrl; ?>/src/img/braid_professional.png" alt="" class="absolute inset-0 w-full h-full object-cover" style="filter: blur(6px); -webkit-filter: blur(6px); scale: 1.05;">
             <div class="relative z-10 space-y-3">
-                <h2 class="text-3xl sm:text-4xl font-extrabold tracking-tight">¡Hola, <?php echo htmlspecialchars($username); ?>!</h2>
-                <p class="text-sm sm:text-base text-[#FAF6F0]/75 max-w-xl">Explora los peinados de trenzas premium que tenemos listos para ti. Aparta tu favorito en línea y paga de forma segura.</p>
+                <h2 class="text-3xl text-white sm:text-4xl font-extrabold tracking-tight">¡Hola, <?php echo htmlspecialchars($username); ?>!</h2>
+                <p class="text-sm sm:text-base text-white max-w-xl">Explora los peinados de trenzas premium que tenemos listos para ti. Aparta tu favorito en línea y paga de forma segura.</p>
             </div>
         </div>
 

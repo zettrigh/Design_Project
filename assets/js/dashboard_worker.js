@@ -17,10 +17,9 @@ document.addEventListener('DOMContentLoaded', () => {
         btnText.textContent = "Procesando...";
 
         try {
-            const formData = new URLSearchParams(new FormData(form));
+            const formData = new FormData(form);
             const response = await fetch(endpoint, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: formData
             });
             const data = await response.json();
@@ -63,7 +62,6 @@ function iniciarEdicion(style) {
     document.getElementById('price').value = style.price;
     document.getElementById('duration_minutes').value = style.duration_minutes || 60;
     document.getElementById('status').value = style.status;
-    document.getElementById('image_url').value = style.image_url;
     document.getElementById('form-title').textContent = "Editar Peinado";
     document.getElementById('form-desc').textContent = `Modificando "${style.name}"`;
     document.getElementById('btn-text').textContent = "Guardar Cambios";

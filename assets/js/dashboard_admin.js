@@ -18,10 +18,9 @@ document.addEventListener('DOMContentLoaded', () => {
         btnText.textContent = "Procesando...";
 
         try {
-            const formData = new URLSearchParams(new FormData(form));
+            const formData = new FormData(form);
             const response = await fetch(endpoint, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: formData
             });
             const data = await response.json();
@@ -66,7 +65,6 @@ function iniciarEdicion(style) {
     document.getElementById('price').value = style.price;
     document.getElementById('duration_minutes').value = style.duration_minutes || 60;
     document.getElementById('status').value = style.status;
-    document.getElementById('image_url').value = style.image_url;
     document.getElementById('form-title').textContent = "Editar Peinado";
     document.getElementById('form-desc').textContent = `Modificando "${style.name}"`;
     document.getElementById('btn-text').textContent = "Guardar Cambios";
@@ -114,6 +112,7 @@ function toggleWorkerForm() {
         document.getElementById('worker-username').value = '';
         document.getElementById('worker-email').value = '';
         document.getElementById('worker-password').value = '';
+        document.getElementById('worker-password').setAttribute('minlength', '8');
         document.getElementById('worker-form-title').textContent = 'Agregar Trabajador';
     }
 }
@@ -122,6 +121,7 @@ function cancelWorkerEdit() {
     document.getElementById('worker-form-container').classList.add('hidden');
     document.getElementById('worker-form').reset();
     document.getElementById('worker-id').value = '';
+    document.getElementById('worker-password').setAttribute('minlength', '8');
 }
 
 async function loadWorkers() {
@@ -152,7 +152,7 @@ async function loadWorkers() {
             html += `<td class="px-4 py-3 text-sm text-[#5C4333]/70">${w.email}</td>`;
             html += `<td class="px-4 py-3 text-sm text-[#5C4333]/50">${w.created_at}</td>`;
             html += `<td class="px-4 py-3 text-right text-xs font-semibold space-x-1">`;
-            html += `<button onclick="editWorker(${w.id}, '${w.username}', '${w.email}')" class="px-2.5 py-1 text-blue-600 hover:bg-blue-50 rounded-lg border border-blue-200/60 hover:border-blue-500 transition-all cursor-pointer">Editar</button> `;
+            html += `<button onclick='editWorker(${w.id}, ${JSON.stringify(w.username)}, ${JSON.stringify(w.email)})' class="px-2.5 py-1 text-blue-600 hover:bg-blue-50 rounded-lg border border-blue-200/60 hover:border-blue-500 transition-all cursor-pointer">Editar</button> `;
             html += `<button onclick="deleteWorker(${w.id})" class="px-2.5 py-1 text-red-600 hover:bg-red-50 rounded-lg border border-red-200/60 hover:border-red-500 transition-all cursor-pointer">Eliminar</button>`;
             html += `</td></tr>`;
         });
@@ -169,6 +169,8 @@ function editWorker(id, username, email) {
     document.getElementById('worker-username').value = username;
     document.getElementById('worker-email').value = email;
     document.getElementById('worker-password').value = '';
+    document.getElementById('worker-password').removeAttribute('required');
+    document.getElementById('worker-password').removeAttribute('minlength');
     document.getElementById('worker-form-title').textContent = 'Editar Trabajador';
     document.getElementById('worker-form-container').classList.remove('hidden');
     document.getElementById('worker-form-container').scrollIntoView({ behavior: 'smooth' });
