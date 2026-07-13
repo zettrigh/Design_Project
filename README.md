@@ -43,6 +43,8 @@ Sistema web completo para gestión de peinados de trenzas, construido con **PHP 
 - **Vistas Presentacionales:** Lógica condicional eliminada de las vistas; toda la información se prepara en los controladores/servicios.
 - **Gestión de Horarios:** Sistema completo de agenda con horarios de atención configurables por el administrador, disponibilidad individual por trabajador, generación dinámica de slots y detección de conflictos de horario.
 - **Tipo de Cambio Manual:** Administrador puede fijar tasa USD→VES desde el panel; la tasa se usa en los catálogos de usuario.
+- **Subida de Archivos:** CRUD de peinados con carga de imágenes vía `multipart/form-data`, validación MIME y almacenamiento en `uploads/hairstyles/`.
+- **Dashboards Responsivos:** Layout de sidebar para admin/worker, navbar superior para client, diseño mobile-first con tarjetas responsivas (breakpoint `sm:`).
 
 ---
 
@@ -146,14 +148,15 @@ Design_Project/
 │   ├── MiddlewareInterface.php   ← Contrato para middlewares
 │   └── Middleware/               ← Middlewares concretos
 │       ├── AuthMiddleware.php    ← Verificación de sesión
-│       └── RoleMiddleware.php    ← Control de acceso por rol (con herencia)
+│       ├── RoleMiddleware.php    ← Control de acceso por rol (con herencia)
+│       └── SecurityHeadersMiddleware.php ← CSP, X-Frame-Options, HSTS
 │
 ├── App/                          ← Capa de aplicación (MVC + Services)
 │   ├── Controllers/              ← Controladores "thin"
 │   │   ├── AuthController.php    ← Login y registro
 │   │   ├── DashboardController.php ← Routing de dashboards por rol
-│   │   ├── WorkerController.php  ← CRUD peinados + reservas + disponibilidad
-│   │   ├── AdminController.php   ← Gestión trabajadores + horarios + tipo de cambio + hereda worker
+│   │   ├── WorkerController.php  ← CRUD peinados (con subida de archivos) + reservas + disponibilidad
+│   │   ├── AdminController.php   ← Gestión trabajadores + horarios + tipo de cambio + hereda WorkerController
 │   │   └── ClientController.php  ← Reservas + pagos + selección de cita
 │   │
 │   ├── Services/                 ← Capa de servicios (lógica de negocio, retorna Result)
@@ -177,9 +180,9 @@ Design_Project/
 │   └── Views/                    ← Plantillas HTML (puramente presentacionales)
 │       ├── login.php
 │       ├── register.php
-│       ├── dashboard_admin.php
-│       ├── dashboard_worker.php
-│       ├── dashboard_user.php
+│       ├── dashboard_admin.php   ← Sidebar + secciones (Peinados, Trabajadores, Reservas, Horarios, Pagos, Tipo de Cambio)
+│       ├── dashboard_worker.php  ← Sidebar + secciones (Peinados, Disponibilidad, Reservas)
+│       ├── dashboard_user.php    ← Navbar superior + catálogo + reserva + pago
 │       └── partials/
 │           └── js_modal_utils.php
 │
@@ -190,15 +193,24 @@ Design_Project/
 │   └── js/
 │       ├── login.js
 │       ├── register.js
-│       ├── dashboard_admin.js
-│       ├── dashboard_worker.js
-│       ├── dashboard_user.js
-│       └── js_modal_utils.js
+│       ├── dashboard_admin.js    ← CRUD trabajadores + peinados (FormData) + sidebar toggle + secciones
+│       ├── dashboard_worker.js   ← CRUD peinados (FormData) + disponibilidad + reserva
+│       ├── dashboard_user.js     ← Catálogo + reserva + pago (Stripe)
+│       └── js_modal_utils.js     ← Modal y toast utilities
+│
+├── uploads/                      ← Archivos subidos por usuarios
+│   └── hairstyles/               ← Imágenes de peinados (JPEG, PNG, WebP, GIF)
 │
 └── src/                          ← Assets estáticos
     ├── input.css
     ├── output.css
     └── img/
+        ├── braid_goddess.png     ← Fondo de login + blur en admin/worker
+        ├── braid_box.png         ← Fondo de registro
+        ├── braid_professional.png← Tarjeta de bienvenida del cliente
+        ├── braid_french.png
+        ├── braid_cornrows.png
+        └── logo.jpeg
 ```
 
 ---
@@ -283,18 +295,31 @@ El sistema implementa **tres roles** con jerarquía de herencia:
 │                        admin                             │
 │  Hereda: worker + client                                 │
 │  Exclusivo: CRUD trabajadores, horarios, tipo de cambio  │
-│  Agenda: vista general de citas del día                  │
+│  UI: Sidebar fijo con secciones navegables vía JS         │
 ├─────────────────────────────────────────────────────────┤
 │                       worker                             │
 │  Hereda: client                                          │
-│  Operativo: CRUD catálogo, gestionar reservas            │
-│  Agenda: gestionar su propia disponibilidad semanal      │
+│  Operativo: CRUD catálogo (con subida de archivos),      │
+│              gestionar reservas                          │
+│  UI: Sidebar fijo (Peinados, Disponibilidad, Reservas)   │
 ├─────────────────────────────────────────────────────────┤
 │                       client                             │
 │  Visualización: catálogo + reservas + pagos              │
-│  Agenda: seleccionar fecha/hora al apartar peinado      │
+│  UI: Navbar superior + tarjeta de bienvenida con imagen  │
 └─────────────────────────────────────────────────────────┘
 ```
+
+### Arquitectura de Dashboards
+
+Cada rol tiene un layout dedicado con navegación por secciones (sin recarga de página):
+
+| Dashboard         | Layout        | Navegación         | Secciones |
+|-------------------|---------------|---------------------|-----------|
+| `dashboard_admin` | Sidebar fijo  | `showSection()` JS  | Peinados, Trabajadores, Reservas, Horarios, Pagos, Tipo de Cambio |
+| `dashboard_worker`| Sidebar fijo  | `showSection()` JS  | Peinados, Disponibilidad, Reservas |
+| `dashboard_user`  | Navbar top    | Enlaces directos    | Catálogo, Reservas, Pagos |
+
+**Responsive:** Las tablas se convierten en tarjetas en mobile mediante `data-label` en `<td>` (breakpoint `sm:`). Fondo decorativo con `::before` pseudo-element + `filter: blur(12px)` (no afecta `position: fixed`).
 
 **Herencia de roles (implementada en `RoleMiddleware`):**
 
@@ -420,7 +445,7 @@ El sistema incluye un módulo completo de **gestión de horarios** con citas pro
 
 | Rol      | Puede gestionar                            |
 |----------|--------------------------------------------|
-| `admin`  | Horarios de atención del negocio + ver agenda general + ver disponibilidad de cualquier trabajador |
+| `admin`  | Horarios de atención del negocio + CRUD trabajadores + ver disponibilidad de cualquier trabajador |
 | `worker` | Su propia disponibilidad semanal            |
 | `client` | Seleccionar fecha/hora al apartar un peinado |
 
@@ -452,7 +477,7 @@ Las migraciones se ejecutan automáticamente en `config/database.php` al iniciar
 | `description`    | `TEXT NOT NULL`                       | Descripción detallada          |
 | `price`          | `DECIMAL(10,2) NOT NULL`              | Precio en USD                  |
 | `duration_minutes`| `INT NOT NULL DEFAULT 60`            | Duración estimada del servicio |
-| `image_url`      | `VARCHAR(255) NOT NULL`               | URL de imagen                  |
+| `image_url`      | `VARCHAR(255) NOT NULL`               | Ruta relativa de imagen (e.g. `uploads/hairstyles/hair_xxx.jpg`) |
 | `status`         | `ENUM('active', 'inactive')`          | Estado                         |
 | `created_at`     | `TIMESTAMP DEFAULT CURRENT_TIMESTAMP` | Fecha de creación              |
 
@@ -548,11 +573,13 @@ Las migraciones se ejecutan automáticamente en `config/database.php` al iniciar
 | **Protección de rutas**       | Middlewares de autenticación y autorización por rol (RBAC) | Router + Middlewares   |
 | **Variables de entorno**      | API keys y credenciales en `.env`, nunca en código       | Config\Environment     |
 | **Bloqueo de .env**           | Apache deniega acceso directo a `.env`                   | .htaccess              |
+| **Bloqueo de uploads**        | Apache deniega acceso directo a `uploads/` (scripts PHP)  | .htaccess              |
 | **Error genérico en login**   | Mensaje único para credenciales inválidas                | AuthService            |
 | **Información oculta**        | Mensajes de error internos no revelan nombres de clase/método | `Router::callAction` |
 | **SSL verification**          | `verify_peer` y `verify_peer_name` activos en llamadas API externas | ExchangeRateService |
 | **Transacciones atómicas**    | Pago + actualización de reserva en `BEGIN/COMMIT/ROLLBACK` | PaymentService |
 | **Autorización por propietario** | Verificación de que `user_id` coincide con la reserva antes del pago | PaymentService |
+| **Subida de archivos segura** | Validación MIME (`jpeg/png/webp/gif`), nombre único con `uniqid()`,存储 en `uploads/hairstyles/`, sin acceso directo vía `.htaccess` | `WorkerController::handleImageUpload()` |
 | **URL validation**            | Helper `validate_url()` con filtro de esquemas permitidos | `bootstrap.php` |
 | **CSRF en JS**                | Tokens incluidos en todos los fetch POST vía `window.CSRF_TOKEN` | dashboard_*.js |
 
@@ -741,6 +768,30 @@ $router->post('products/store', 'App\\Controllers\\ProductController', 'store', 
 
 ## Changelog
 
+### 2026-07-07 — Rediseño UI + Subida de Archivos + Corrección de Bugs
+
+#### Rediseño de Dashboards
+- **Layout de Sidebar:** Admin y Worker ahora usan sidebar fijo con navegación por secciones vía `showSection()` (JS), eliminando recargas de página.
+- **Consistencia Visual:** Paleta unificada (`#5C4333`, `#B56B45`, `#FAF6F0`, `#EFE5D9`) en todos los dashboards.
+- **Background Decorativo:** Efecto `::before` pseudo-element con `braid_goddess.png` + `filter: blur(12px)` (no rompe `position: fixed`).
+- **Responsive:** Tablas se convierten en tarjetas en mobile (`data-label` + `sm:` breakpoints).
+- **Formulario de Peinados:** Grid `cols-3` con Price/Duration/Status alineados e `h-10` uniforme.
+- **Cliente:** Tarjeta de bienvenida con `braid_professional.png` + gradiente dual para legibilidad.
+
+#### Subida de Archivos (CRUD Peinados)
+- **Frontend:** `<input type="file">` con `enctype="multipart/form-data"`, envío vía `FormData`.
+- **Backend:** `WorkerController::handleImageUpload()` con validación MIME (`jpeg/png/webp/gif`), nombres únicos (`uniqid()`), almacenamiento en `uploads/hairstyles/`.
+- **Edición:** Imagen opcional al editar; si no se sube nueva, se conserva la existente.
+
+#### Corrección de Bugs
+- **Registro 404:** `AuthController::register()` ahora aplanaba la respuesta JSON (extrae `redirect` de `Result::getValue()`), igual que `login()`.
+- **Edición de Trabajador:** Password `minlength` y `required` eliminados durante edición para permitir guardar sin cambios.
+- **XSS en Worker Edit:** `onclick` con interpolación de string reemplazado por `data-id` + event listener.
+
+#### Eliminación de Agenda del Admin
+- Sección "Agenda" removida del sidebar y contenido de `dashboard_admin.php`.
+- Admin conserva acceso a Reservas y Horarios de atención del negocio.
+
 ### 2026-07-06 — Refactorización OWASP + Clean Code
 
 #### Seguridad (OWASP Top 10)
@@ -751,7 +802,7 @@ $router->post('products/store', 'App\\Controllers\\ProductController', 'store', 
 - **SSL verification:** `verify_peer` y `verify_peer_name` habilitados en llamadas a API externa.
 - **Transacciones atómicas:** `PaymentService::processPayment` ahora usa `BEGIN/COMMIT/ROLLBACK`.
 - **Autorización por propietario:** Verificación de que la reserva pertenece al usuario antes del pago.
-- **Política de contraseñas:** Mínimo 8 caracteres (antes 6).
+- **Política de contraseñas:** Mínimo 8 caracteres (excepto durante edición de trabajador, donde es opcional).
 - **Información oculta:** Mensajes de error internos no revelan nombres de clase/método en `Router`.
 
 #### Clean Code
