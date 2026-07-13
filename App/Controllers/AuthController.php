@@ -59,7 +59,17 @@ class AuthController
             $email           = $_POST['email']           ?? '';
             $password        = $_POST['password']        ?? '';
             $passwordConfirm = $_POST['password_confirm'] ?? '';
-            echo json_encode($this->authService->register($username, $email, $password, $passwordConfirm)->toArray());
+            $result = $this->authService->register($username, $email, $password, $passwordConfirm);
+            if ($result->isSuccess()) {
+                $value = $result->getValue();
+                echo json_encode([
+                    'success'  => true,
+                    'redirect' => $value['redirect'] ?? $baseUrl . '/login',
+                    'message'  => $result->getMessage(),
+                ]);
+            } else {
+                echo json_encode($result->toArray());
+            }
             exit;
         }
 
